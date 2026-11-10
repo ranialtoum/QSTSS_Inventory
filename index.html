@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>School Needs Inventory</title>
+<style>
+:root{--p:#7a1f3d;--bg:#f5f6f8}
+*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:#222}
+header{background:var(--p);color:#fff;padding:14px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;opacity:.9;font-size:13px}
+.hbtns{display:flex;flex-wrap:wrap;gap:6px}
+.hbtn{background:#ffffff22;color:#fff;border:1px solid #ffffff77;padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}.hbtn:hover{background:#ffffff38}
+nav{display:flex;flex-wrap:wrap;gap:4px;background:#fff;padding:8px 12px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5}
+nav:empty{display:none}
+nav button{border:0;background:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}nav button.on{background:var(--p);color:#fff}
+main{padding:16px;max-width:1400px;margin:auto}
+.card{background:#fff;border-radius:10px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px #0001}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:10px;padding:14px;border-top:4px solid var(--p);box-shadow:0 1px 3px #0001;font-size:13px}.kpi b{display:block;font-size:24px;margin-top:6px}
+.schools{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:12px}
+.school{background:#fff;border:2px solid #e8d9df;border-radius:12px;padding:22px;cursor:pointer;text-align:start;font:inherit;color:#555;box-shadow:0 1px 3px #0001}
+.school:hover,.school:focus-visible{border-color:var(--p)}
+.school b{display:block;font-size:18px;color:var(--p);margin-bottom:8px}
+.note{background:#fff8e1;border:1px solid #f0d58a;padding:10px 12px;border-radius:8px;margin-bottom:12px}
+form{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+label{font-size:12px;color:#555;display:flex;flex-direction:column;gap:4px}
+input,select,textarea{font:inherit;padding:7px;border:1px solid #ccc;border-radius:6px;background:#fff}
+label.req span::after{content:" *";color:#c00}
+.full{grid-column:1/-1}
+.btn{background:var(--p);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;display:inline-block}.btn.alt{background:#555}.btn.sm{padding:4px 8px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #e2e2e2;padding:6px;text-align:start;vertical-align:top}th{background:#f0e6ea;position:sticky;top:0}
+.wrap{overflow:auto;max-height:65vh}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+@media print{nav,header,.noprint{display:none}body{background:#fff}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<header id="hdr"></header>
+<nav id="nav"></nav>
+<main id="app"></main>
+<script>
+const YEAR="2027/2028", KEY="qstss_needs";
+// Schools: edit names here. "id" is used to keep each school's data separate — don't change an id after people start entering data.
+const SCHOOLS=[
+ {id:"umalsameem",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – أم السنيم",en:"QSTSS – Um Alsameem"},
+ {id:"alsakhama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – السخامة",en:"QSTSS – Al Sakhama"},
+ {id:"rawdetalhamama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – روضة الحمامة",en:"QSTSS – Rawdet Alhamama"}
+];
+const L={
+dept:["العلوم (عام) / Science (General)","العلوم – الأحياء / Biology","العلوم – الكيمياء / Chemistry","العلوم – الفيزياء / Physics","الرياضيات / Mathematics","اللغة الإنجليزية / English","اللغة العربية / Arabic","التربية الإسلامية / Islamic Studies","الدراسات الاجتماعية / Social Studies","الحوسبة وتكنولوجيا المعلومات / Computing & IT","الهندسة والتكنولوجيا / Engineering & Technology","التربية البدنية / Physical Education","الفنون البصرية / Visual Arts","مركز مصادر التعلم / LRC","البحث العلمي والابتكار / Research & Innovation","الإرشاد الأكاديمي والمهني / Guidance","الشؤون الأكاديمية / Academic Affairs","الشؤون الإدارية / Administrative Affairs","جميع الأقسام / All Departments"],
+itemType:["مستهلكات / Consumables","أصول / Assets"],
+priority:["عالية / High","متوسطة / Medium","منخفضة / Low"],
+status:["مسودة / Draft","مرفوع للاعتماد / Submitted","معتمد / Approved","مرفوض / Rejected","طلب عروض أسعار / RFQ","تم الشراء / Purchased","تم الاستلام / Received"],
+unit:["قطعة / Piece","طقم / Set","علبة / Box","عبوة / Pack","كرتون / Carton","لفة / Roll","كيلوجرام / kg","لتر / L","متر / m","رخصة / License","Kit","طالب / Student","معلم / Teacher"],
+subReq:["اشتراك جديد / New","تجديد / Renewal"],
+period:["شهري / Monthly","فصلي / Termly","سنوي / Annual","متعدد السنوات / Multi-year"],
+subCat:["منصة تعليمية للطلاب / Student Platform","أداة تدريس للمعلمين / Teaching Tool","تقييم واختبارات / Assessment","تطوير مهني / Professional Development","برمجة وتقنية / Coding & Tech","إدارة مدرسية / School Management","الموقع والخدمات الرقمية / Website & Digital Services"],
+reason:["البرنامج الأكاديمي / Academic program","التطوير المهني / Professional development","الثقافة العامة / General knowledge"],
+resType:["كتاب مطبوع / Printed Book","كتاب إلكتروني / E-book","موقع إلكتروني / Website","صحيفة / Newspaper","مجلة / Magazine","قاعدة بيانات / Database","وسائط متعددة / Multimedia"],
+lang:["العربية / Arabic","الإنجليزية / English","ثنائي اللغة / Bilingual"],
+aud:["الطلاب / Students","المعلمون / Teachers","الطلاب والمعلمون / Students & Teachers","الإداريون / Staff"],
+needType:["أدوات ومستلزمات / Tools & Supplies","وسائل تعليمية / Teaching Aids","أثاث / Furniture","قرطاسية / Stationery","خدمات / Services","الأنشطة اللامنهجية المدفوعة / Paid Extracurricular Activities","أخرى / Other"],
+grade:["الصف السابع / G7","الصف الثامن / G8","الصف التاسع / G9","الصف العاشر / G10","الصف الحادي عشر / G11","الصف الثاني عشر / G12","جميع الصفوف / All Grades"],
+techCat:["حاسوب محمول / Laptop","حاسوب مكتبي / Desktop","جهاز لوحي / Tablet","شاشة تفاعلية / Interactive Display","جهاز عرض / Projector","طابعة أو ماسح / Printer-Scanner","شبكات وخوادم / Network & Servers","برمجيات وتراخيص / Software & Licenses","صوتيات ومؤتمرات الفيديو / Audio & Video Conferencing","تصوير وإنتاج إعلامي / Photography & Media","أنظمة أمنية وحضور / Security & Attendance","اتصالات / Communications","ملحقات / Accessories","أخرى / Other"],
+techReq:["جديد / New","استبدال / Replacement","ترقية / Upgrade","صيانة / Maintenance"],
+techItems:["أجهزة كمبيوتر محمولة / Laptops","أجهزة كمبيوتر محمولة للمسابقات الدولية (WorldSkills) / Laptops for International Competitions","أجهزة كمبيوتر محمولة Apple لتدريس تكنولوجيا التصميم / Apple Laptops – Design Technology","جهاز كمبيوتر مكتبي / Desktop PC","جهاز كمبيوتر متكامل احترافي – المكتبة الرقمية / Professional All-in-One PC – Digital Library","جهاز لوحي (تابلت) / Tablet","شاشات عرض تفاعلية (ذكية) متنقلة / Mobile Interactive Displays","أجهزة عرض تفاعلية / Interactive Projectors","شاشات تلفزيون / TV Screens","جهاز عرض بصري / Visualizer","نظام مؤتمرات الفيديو / Video Conferencing","نظام صوت احترافي سقفي / Professional In-Ceiling Audio System","طابعة بطاقات / ID Card Printer","طابعة Plotter / Plotter Printer","طابعة HP / HP Printer","آلة تصوير HP / HP Copier","أجهزة مسح ضوئي سريعة / High-Speed Scanners","قارئ باركود / Barcode Readers","أجهزة بصمة للموظفين / Staff Biometric Devices","نظام كاميرات مراقبة / Indoor & Outdoor CCTV System","هواتف أرضية / Landline Phones","كاميرا Sony α7 IV / Camera Body","عدسة Sony FE 24-70mm f/2.8 GM / Lens","عدسة Sony FE 50mm f/1.8 / Lens","عدسة Sony FE 85mm f/1.8 / Lens","نظام ميكروفون لاسلكي RØDE Wireless GO II / Wireless Microphone System","حامل Manfrotto ONE Carbon / Carbon Tripod with Fluid Head","بطاقات ذاكرة SDXC V90 أو CFexpress / Memory Cards","حامل فيديو احترافي Manfrotto / Professional Video Tripod","جهاز تلقين / Teleprompter","بطاريات Sony NP-FZ100 مع شاحن / Extra Batteries + Dual Charger","إضاءة Aputure LS C300d II / Professional Lighting","حامل إضاءة C-Stand / Light Stand","فلاش للكاميرا / Detachable Camera Flash","جهاز إرسال فيديو لاسلكي / Wireless Video Transmitter"],
+labs:["مختبر الطائرات المسيّرة / Drones Lab","مختبر الفيزياء التطبيقية / Applied Physics Lab","مختبر المحاكاة الطبية / Medical Simulation Lab","مختبر التحليل الكيميائي / Chemical Analysis Lab","مختبر التصميم الهندسي / Engineering Design Lab","مختبر الاتصالات / Communication Lab","مختبر التصنيع الرقمي / Fab Lab","مختبر الشبكات / Networking Lab","مختبر علوم الفضاء / Space Science Lab","مختبر علوم الحاسوب / CS Lab","مختبر اللغات / Languages Lab","مختبر الواقع المعزز / AR Lab","مختبر الواقع الافتراضي / VR Lab","مختبر STEM / STEM Lab","مختبر الطب الحيوي / BioMed Lab","مختبر الروبوتات / Robotics Lab","مختبر الطاقة / Energy Lab","مختبر الأحياء / Biology Lab","مختبر الكيمياء / Chemistry Lab","مختبر الفيزياء / Physics Lab"]
+};
+// Labels and list values are stored as "Arabic / English" (or "Arabic | English" where the text itself contains "/").
+// Saved data keeps the full bilingual value; only the display switches language.
+// Field: [key, label, type(t/n/d/s/ta/dl), list, required]
+const DEPT=["dept","القسم / Department","s","dept",1], QTY=["qty","الكمية / Qty","n","",1], PRICE=["price","سعر الوحدة (ر.ق) / Unit Price (QAR)","n"], UNIT=["unit","الوحدة / Unit","s","unit"];
+const SPEC=["spec","المواصفات / Specifications","ta"], BRAND=["brand","البراند المطلوب / Required Brand","t"], URLF=["url","الرابط / المورد المقترح | URL / Suggested Supplier","t"];
+const TAIL=[["priority","الأولوية / Priority","s","priority",1],["status","الحالة / Status","s","status",1],["by","مقدم الطلب / Requested by","t","",1],["notes","ملاحظات / Notes","ta"],["supplier","المورد / Supplier","t"]];
+const C={
+subs:{title:"عضويات-اشتراكات-اختبارات | Memberships, Subscriptions & Tests",f:[DEPT,["item","اسم المنصة / الاشتراك | Platform / Subscription","t","",1],["desc","الوصف والغرض / Description & Purpose","ta"],["subCat","فئة الاشتراك / Category","s","subCat"],["target","الفئة المستهدفة / الصف | Target Users / Grade","t"],["users","عدد المستخدمين / التراخيص | Users / Licenses","n"],["subReq","نوع الطلب / Request Type","s","subReq"],["period","مدة الاشتراك / Period","s","period"],["start","تاريخ البدء / Start Date","d"],["end","تاريخ الانتهاء / End Date","d"],["cost","التكلفة التقديرية (ر.ق) / Est. Cost (QAR)","n"],["url","الرابط / URL","t"],...TAIL]},
+lrc:{title:"مصادر التعلم | Learning Resources",f:[DEPT,["reason","سبب الشراء / Reason for Purchase","s","reason"],["resType","نوع المصدر / Resource Type","s","resType"],["item","العنوان / Title","t","",1],["author","المؤلف / Author","t"],["publisher","الناشر / Publisher","t"],["spec","ISBN / الرابط | ISBN / URL","t"],["lang","اللغة / Language","s","lang"],["aud","الفئة المستهدفة / Audience","s","aud"],["qty","عدد النسخ / Copies","n","",1],PRICE,...TAIL]},
+books:{title:"الكتب الدراسية | Textbooks",f:[DEPT,["grade","المرحلة الدراسية / Grade","s","grade",1],["item","الكتاب المطلوب / Required Book","t","",1],["spec","ISBN","t"],["publisher","الناشر / Publisher","t"],QTY,["price","تكلفة الوحدة التقديرية (ر.ق) / Est. Unit Cost (QAR)","n"],["status","الحالة / Status","s","status",1],["supplier","المورد / Supplier","t"]]},
+tech:{title:"الاحتياجات التكنولوجية | Technology Needs",f:[["dept","القسم / الجهة الطالبة | Department / Unit","s","dept",1],["techCat","فئة التجهيز / Equipment Category","s","techCat"],["techReq","نوع الطلب / Request Type","s","techReq"],["item","اسم الصنف / Item","dl","techItems",1],SPEC,["purpose","الغرض من الشراء / Purpose","t"],BRAND,["location","موقع الاستخدام / Location","t"],QTY,PRICE,...TAIL]},
+dept:{title:"احتياجات الأقسام | Department Needs",f:[DEPT,["needType","نوع الاحتياج / Need Type","s","needType"],["item","اسم الصنف / Item","t","",1],SPEC,["purpose","الغرض / المبرر | Purpose / Justification","t"],UNIT,QTY,PRICE,["reqBy","الموعد المطلوب / Required By","d"],...TAIL]},
+labs:{title:"المختبرات | Labs",f:[["lab","المختبر / Lab","s","labs",1],["itemType","نوع البند / Item Type","s","itemType",1],["item","اسم الصنف / Item","t","",1],SPEC,BRAND,URLF,UNIT,QTY,PRICE,...TAIL]},
+research:{title:"البحث العلمي | Scientific Research",f:[["itemType","نوع البند / Item Type","s","itemType",1],["item","اسم الصنف / Item","t","",1],SPEC,["purpose","الغرض من الشراء / Purpose","t"],BRAND,URLF,UNIT,QTY,PRICE,...TAIL]}
+};
+
+// ---- storage (per school) ----
+const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
+ set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){alert(T("تعذّر الحفظ في هذا المتصفح.","Could not save in this browser."));return false}},
+ del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+let lang=ls.get("qstss_lang")==="en"?"en":"ar";
+let school=SCHOOLS.some(s=>s.id===ls.get("qstss_school"))?ls.get("qstss_school"):null;
+const dbKey=id=>KEY+":"+(id||school);
+function loadDB(id){let d={};try{d=JSON.parse(ls.get(dbKey(id))||"{}")||{}}catch(e){} for(const k in C)d[k]=Array.isArray(d[k])?d[k]:[];return d;}
+const saveDB=()=>ls.set(dbKey(),JSON.stringify(DB));
+let DB=school?loadDB():null;
+let view=school?"dash":"pick", editId=null, rfqSrc="tech";
+
+// ---- language ----
+const T=(a,e)=>lang==="ar"?a:e;
+const AR=/[؀-ۿ]/;
+function tr(s){if(s==null)return "";s=String(s);
+ if(s.includes(" | ")){const i=s.indexOf(" | ");return lang==="ar"?s.slice(0,i):s.slice(i+3);}
+ if(!s.includes(" / "))return s;
+ const p=s.split(" / "),a=p.filter(x=>AR.test(x)),e=p.filter(x=>!AR.test(x));
+ return a.length&&e.length?(lang==="ar"?a:e).join(" / "):s;}
+const SN=id=>{const s=SCHOOLS.find(x=>x.id===id);return s?T(s.ar,s.en):"";};
+const fmt=n=>(+n||0).toLocaleString("en-US")+" "+T("ر.ق","QAR");
+const total=(k,r)=>k==="subs"?(+r.cost||0):(+r.qty||0)*(+r.price||0);
+const hasPrice=(k,r)=>k==="subs"?+r.cost>0:+r.price>0;
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const days=d=>d?Math.ceil((new Date(d)-new Date())/864e5):"";
+const shown=(f,v)=>f[2]==="s"?tr(v):(v??"");
+
+function setLang(){lang=lang==="ar"?"en":"ar";ls.set("qstss_lang",lang);render();}
+function pickSchool(id){school=id;ls.set("qstss_school",id);DB=loadDB();view="dash";editId=null;rfqSrc="tech";render();scrollTo(0,0);}
+function changeSchool(){view="pick";editId=null;render();}
+function go(v){view=school?v:"pick";editId=null;render();}
+
+function header(){const inSchool=school&&view!=="pick";
+ document.getElementById("hdr").innerHTML=`<div><h1>${T("ملف حصر احتياجات المدارس","School Needs Inventory")}</h1>
+ <p>${inSchool?esc(SN(school)):T("اختر المدرسة للبدء","Choose a school to start")} — ${T("العام الدراسي","Academic Year")} ${YEAR}</p></div>
+ <div class="hbtns">${inSchool?`<button class="hbtn" onclick="changeSchool()">${T("تغيير المدرسة","Change school")}</button>`:""}
+ <button class="hbtn" onclick="setLang()" lang="${lang==="ar"?"en":"ar"}">${lang==="ar"?"English":"العربية"}</button></div>`;}
+function nav(){const n=document.getElementById("nav");if(view==="pick"){n.innerHTML="";return;}
+ const tabs=[["dash","لوحة الملخص | Dashboard"],...Object.entries(C).map(([k,v])=>[k,v.title]),["rfq","طلب عروض أسعار | RFQ"],["data","البيانات | Data"],["help","التعليمات | Help"]];
+ n.innerHTML=tabs.map(([k,t])=>`<button class="${k===view?"on":""}" onclick="go('${k}')">${esc(tr(t))}</button>`).join("");}
+function render(){const h=document.documentElement;h.lang=lang;h.dir=lang==="ar"?"rtl":"ltr";
+ document.title=T("حصر احتياجات المدارس","School Needs Inventory")+(school&&view!=="pick"?" – "+SN(school):"");
+ header();nav();const a=document.getElementById("app");
+ a.innerHTML=view==="pick"?pick():view==="dash"?dash():view==="rfq"?rfq():view==="data"?data():view==="help"?help():cat(view);
+ const f=document.getElementById("f"); if(f) f.oninput=()=>{document.getElementById("tot").textContent=fmt(total(view,Object.fromEntries(new FormData(f))));};}
+
+function pick(){const cnt=id=>{const d=loadDB(id);return Object.keys(C).reduce((s,k)=>s+d[k].length,0);};
+ return `<div class="card"><h2>${T("اختر المدرسة","Choose your school")}</h2>
+ <p>${T("لكل مدرسة بياناتها الخاصة. يمكنك تغيير المدرسة لاحقًا من أعلى الصفحة.","Each school has its own data. You can switch schools later from the top of the page.")}</p>
+ <div class="schools">${SCHOOLS.map(s=>`<button class="school" onclick="pickSchool('${s.id}')"><b>${esc(T(s.ar,s.en))}</b>${cnt(s.id)} ${T("بند محفوظ في هذا المتصفح","items saved in this browser")}</button>`).join("")}</div></div>`;}
+
+function input(f,val){const [k,lab,t,o,req]=f,v=esc(val);let h;
+ if(t==="s") h=`<select name="${k}" ${req?"required":""}><option value=""></option>${L[o].map(x=>`<option value="${esc(x)}" ${x===val?"selected":""}>${esc(tr(x))}</option>`).join("")}</select>`;
+ else if(t==="ta") h=`<textarea name="${k}" rows="2">${v}</textarea>`;
+ else if(t==="dl") h=`<input name="${k}" list="dl_${k}" value="${v}" ${req?"required":""}><datalist id="dl_${k}">${L[o].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`;
+ else h=`<input name="${k}" type="${t==="n"?"number":t==="d"?"date":"text"}" ${t==="n"?'min="0" step="any"':""} value="${v}" ${req?"required":""}>`;
+ return `<label class="${req?"req":""} ${t==="ta"?"full":""}"><span>${esc(tr(lab))}</span>${h}</label>`;}
+
+function cat(k){const c=C[k],rows=DB[k],r=(editId&&rows.find(x=>x.id===editId))||{status:L.status[0]};
+ return `<div class="card"><h2>${esc(tr(c.title))}</h2><form id="f" onsubmit="save(event,'${k}')">${c.f.map(f=>input(f,r[f[0]])).join("")}
+ <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn">${editId?T("تحديث","Update"):T("إضافة","Add")}</button>${editId?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:""}</div></form></div>
+ <div class="card"><div class="bar"><input placeholder="${T("بحث","Search")}" oninput="filt(this.value)"><span>${rows.length} ${T("بند","items")} — ${fmt(rows.reduce((s,x)=>s+total(k,x),0))}</span><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
+ <div class="wrap"><table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
+ ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${esc(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${x.id}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${x.id}')">${T("حذف","Delete")}</button></td></tr>`).join("")}
+ </tbody></table></div></div>`;}
+function save(e,k){e.preventDefault();const r=Object.fromEntries(new FormData(e.target));
+ const ex=editId&&DB[k].find(x=>x.id===editId);
+ if(ex) Object.assign(ex,r);
+ else DB[k].push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString().slice(0,10),...r});
+ saveDB();editId=null;render();}
+function edit(id){editId=id;render();scrollTo(0,0);}
+function del(k,id){if(confirm(T("حذف هذا البند؟","Delete this item?"))){DB[k]=DB[k].filter(x=>x.id!==id);saveDB();render();}}
+function filt(q){q=q.toLowerCase();document.querySelectorAll("#t tbody tr").forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?"":"none");}
+
+function dash(){let T0=0,N=0,NP=0,PEND=0;
+ const rows=Object.entries(C).map(([k,c])=>{const r=DB[k],t=r.reduce((s,x)=>s+total(k,x),0),np=r.filter(x=>!hasPrice(k,x)).length,p=r.filter(x=>x.status===L.status[1]).length;T0+=t;N+=r.length;NP+=np;PEND+=p;
+  return `<tr><td><a href="#" onclick="go('${k}');return false">${esc(tr(c.title))}</a></td><td>${r.length}</td><td>${fmt(t)}</td><td>${np}</td><td>${p}</td></tr>`;}).join("");
+ const exp=DB.subs.filter(x=>{const d=days(x.end);return d!==""&&d>=0&&d<=60;}).length;
+ const labRows=L.labs.map(l=>{const r=DB.labs.filter(x=>x.lab===l),sum=t=>r.filter(x=>!t||x.itemType===t).reduce((s,x)=>s+total("labs",x),0);
+  return `<tr><td>${esc(tr(l))}</td><td>${r.length}</td><td>${fmt(sum(L.itemType[0]))}</td><td>${fmt(sum(L.itemType[1]))}</td><td>${fmt(sum())}</td></tr>`;}).join("");
+ const k=[[T("إجمالي التكلفة التقديرية","Total Est. Cost"),fmt(T0)],[T("إجمالي عدد البنود","Total Items"),N],[T("بنود دون سعر","Items without Price"),NP],[T("طلبات بانتظار الاعتماد","Pending Approval"),PEND],[T("اشتراكات تنتهي خلال 60 يومًا","Subscriptions Expiring in 60 Days"),exp]];
+ return `<div class="kpis">${k.map(([a,b])=>`<div class="kpi">${a}<b>${b}</b></div>`).join("")}</div>
+ <div class="card"><h3>${T("حسب الفئة","By Category")}</h3><div class="wrap"><table><thead><tr><th>${T("الفئة","Category")}</th><th>${T("عدد البنود","Items")}</th><th>${T("الإجمالي","Total")}</th><th>${T("دون سعر","No Price")}</th><th>${T("بانتظار الاعتماد","Pending")}</th></tr></thead><tbody>${rows}</tbody></table></div></div>
+ <div class="card"><h3>${T("سجل المختبرات","Labs Register")}</h3><div class="wrap"><table><thead><tr><th>${T("المختبر","Lab")}</th><th>${T("عدد البنود","Items")}</th><th>${T("مستهلكات","Consumables")}</th><th>${T("أصول","Assets")}</th><th>${T("الإجمالي","Total")}</th></tr></thead><tbody>${labRows}</tbody></table></div></div>`;}
+
+function rfq(){const srcs=[["tech",C.tech.title],["books",C.books.title],["research",C.research.title],["dept",C.dept.title],...L.labs.map(l=>["lab:"+l,l])];
+ if(!srcs.some(s=>s[0]===rfqSrc)) rfqSrc="tech";
+ const items=(rfqSrc.startsWith("lab:")?DB.labs.filter(x=>x.lab===rfqSrc.slice(4)):DB[rfqSrc]).filter(x=>x.status===L.status[4]);
+ return `<div class="card"><div class="bar noprint"><label>${T("مصدر الطلب","Source")}<select onchange="rfqSrc=this.value;render()">${srcs.map(([v,t])=>`<option value="${esc(v)}" ${v===rfqSrc?"selected":""}>${esc(tr(t))}</option>`).join("")}</select></label><button class="btn" onclick="print()">${T("طباعة","Print")}</button></div>
+ <h2>${T("طلب عروض أسعار","Request for Quotation (RFQ)")}</h2>
+ <p><b>${esc(SN(school))}</b><br>${T("رقم الطلب","RFQ No.")}: RFQ-${YEAR}-____ — ${T("تاريخ الإصدار","Issue Date")}: ${new Date().toISOString().slice(0,10)}<br>${T("المصدر","Source")}: <b>${esc(tr(srcs.find(s=>s[0]===rfqSrc)[1]))}</b></p>
+ <table><thead><tr><th>${T("م","#")}</th><th>${T("الصنف","Item")}</th><th>${T("المواصفات","Specifications")}</th><th>${T("الوحدة","Unit")}</th><th>${T("الكمية","Qty")}</th><th>${T("سعر الوحدة (ر.ق)","Unit Price (QAR)")}</th><th>${T("الإجمالي (ر.ق)","Total (QAR)")}</th></tr></thead><tbody>
+ ${items.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.item)}</td><td>${esc(x.spec)}</td><td>${esc(tr(x.unit))}</td><td>${esc(x.qty)}</td><td></td><td></td></tr>`).join("")||`<tr><td colspan="7">${T('لا توجد بنود بحالة "طلب عروض أسعار"','No items with RFQ status')}</td></tr>`}
+ </tbody></table>
+ <p>${T("اسم المورد","Supplier")}: ____________ &nbsp; ${T("رقم السجل التجاري","CR No.")}: ________ &nbsp; ${T("شخص التواصل","Contact")}: ________ &nbsp; ${T("التوقيع والختم","Signature & Stamp")}: ________</p></div>`;}
+
+function csv(k){const c=C[k],head=[T("م","#"),...c.f.map(f=>tr(f[1])),T("الإجمالي","Total")];
+ const lines=[head,...DB[k].map((x,i)=>[i+1,...c.f.map(f=>shown(f,x[f[0]])),total(k,x)])].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+ dl("﻿"+lines.join("\r\n"),`${school}-${k}.csv`,"text/csv");}
+function dl(s,n,t){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([s],{type:t}));a.download=n;document.body.appendChild(a);a.click();a.remove();}
+function backup(){dl(JSON.stringify({school,...DB}),`qstss-${school}-backup.json`,"application/json");}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{let d;try{d=JSON.parse(r.result);}catch(e){alert(T("ملف غير صالح","Invalid file"));return;}
+ if(d.school&&d.school!==school&&SCHOOLS.some(s=>s.id===d.school)&&!confirm(T(`هذه النسخة تخص ${SN(d.school)}. هل تريد استعادتها في ${SN(school)}؟`,`This backup belongs to ${SN(d.school)}. Restore it into ${SN(school)} anyway?`)))return;
+ const n=Object.keys(C).reduce((s,k)=>s+DB[k].length,0);
+ if(n&&!confirm(T(`سيتم استبدال ${n} بند محفوظ لهذه المدرسة. متابعة؟`,`This replaces the ${n} items saved for this school. Continue?`)))return;
+ for(const k in C)DB[k]=Array.isArray(d[k])?d[k]:[];saveDB();alert(T("تمت الاستعادة","Restored"));go("dash");};r.readAsText(f);}
+function moveLegacy(){let d={};try{d=JSON.parse(ls.get(KEY)||"{}")||{}}catch(e){}
+ if(!confirm(T(`نقل البيانات السابقة إلى ${SN(school)}؟`,`Move the earlier data into ${SN(school)}?`)))return;
+ for(const k in C)if(Array.isArray(d[k]))DB[k]=DB[k].concat(d[k]);saveDB();ls.del(KEY);go("dash");}
+function clearAll(){if(confirm(T(`حذف جميع بيانات ${SN(school)} من هذا المتصفح؟`,`Delete ALL data for ${SN(school)} from this browser?`))){ls.del(dbKey());DB=loadDB();go("dash");}}
+function data(){const legacy=ls.get(KEY);
+ return `<div class="card"><h2>${T("البيانات","Data")} — ${esc(SN(school))}</h2>
+ <p>${T("تُحفظ البيانات في هذا المتصفح فقط، ولكل مدرسة بياناتها المنفصلة. نزّل نسخة احتياطية بانتظام.","Data is saved in this browser only, separately for each school. Download a backup regularly.")}</p>
+ ${legacy?`<div class="note">${T("توجد بيانات أُدخلت قبل إضافة اختيار المدرسة.","There is data entered before school selection was added.")} <button class="btn sm" onclick="moveLegacy()">${T("نقلها إلى هذه المدرسة","Move it into this school")}</button></div>`:""}
+ <div class="bar"><button class="btn" onclick="backup()">${T("تنزيل نسخة احتياطية","Download backup")}</button>
+ <label class="btn alt">${T("استعادة نسخة","Restore backup")}<input type="file" accept=".json" hidden onchange="imp(this.files[0]);this.value=''"></label></div>
+ <div class="bar">${Object.keys(C).map(k=>`<button class="btn sm alt" onclick="csv('${k}')">CSV: ${esc(tr(C[k].title))}</button>`).join("")}</div>
+ <button class="btn sm" style="background:#b00" onclick="clearAll()">${T("مسح كل بيانات هذه المدرسة","Clear all data for this school")}</button></div>`;}
+function help(){return `<div class="card"><h2>${T("التعليمات","Instructions")}</h2><ol>
+ <li>${T("اختر مدرستك أولًا. يمكنك تغييرها من زر «تغيير المدرسة» أعلى الصفحة.","Choose your school first. You can change it with the “Change school” button at the top.")}</li>
+ <li>${T("اختر الصفحة المناسبة من الشريط العلوي (الاشتراكات، مصادر التعلم، الكتب، التكنولوجيا، الأقسام، المختبرات، البحث العلمي).","Pick the right page from the top bar (subscriptions, learning resources, textbooks, technology, departments, labs, research).")}</li>
+ <li>${T("عبّئ الحقول، والحقول المعلّمة بـ * إلزامية. يُحسب الإجمالي تلقائيًا (الكمية × سعر الوحدة).","Fill in the fields; those marked * are required. The total is calculated automatically (Qty × Unit Price).")}</li>
+ <li>${T("اترك الحالة «مسودة» حتى يكتمل الطلب، ثم غيّرها إلى «مرفوع للاعتماد».","Leave the status as “Draft” until the request is complete, then change it to “Submitted”.")}</li>
+ <li>${T("البنود بحالة «طلب عروض أسعار» تظهر في صفحة RFQ للطباعة وإرسالها للموردين.","Items with status “RFQ” appear on the RFQ page, ready to print and send to suppliers.")}</li>
+ <li>${T("صدّر البيانات إلى Excel (CSV) أو نزّل نسخة احتياطية من صفحة البيانات.","Export to Excel (CSV) or download a backup from the Data page.")}</li>
+ <li>${T("زر English / العربية أعلى الصفحة يبدّل لغة الموقع.","The English / العربية button at the top switches the site language.")}</li></ol></div>`;}
+render();
+</script>
+</body>
+</html>
