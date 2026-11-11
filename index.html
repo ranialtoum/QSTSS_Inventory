@@ -8,8 +8,9 @@
 *{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Tahoma,Arial,sans-serif;background:var(--bg);color:#222}
 header{background:var(--p);color:#fff;padding:14px 20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 header h1{margin:0;font-size:20px}header p{margin:4px 0 0;opacity:.9;font-size:13px}
-.hbtns{display:flex;flex-wrap:wrap;gap:6px}
+.hbtns{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .hbtn{background:#ffffff22;color:#fff;border:1px solid #ffffff77;padding:6px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}.hbtn:hover{background:#ffffff38}
+.chip{font-size:12px;padding:4px 10px;border-radius:20px;background:#ffffff22}.chip.bad{background:#ffd54f;color:#222}
 nav{display:flex;flex-wrap:wrap;gap:4px;background:#fff;padding:8px 12px;border-bottom:1px solid #ddd;position:sticky;top:0;z-index:5}
 nav:empty{display:none}
 nav button{border:0;background:#eee;padding:8px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:13px}nav button.on{background:var(--p);color:#fff}
@@ -21,29 +22,44 @@ main{padding:16px;max-width:1400px;margin:auto}
 .school{background:#fff;border:2px solid #e8d9df;border-radius:12px;padding:22px;cursor:pointer;text-align:start;font:inherit;color:#555;box-shadow:0 1px 3px #0001}
 .school:hover,.school:focus-visible{border-color:var(--p)}
 .school b{display:block;font-size:18px;color:var(--p);margin-bottom:8px}
-.note{background:#fff8e1;border:1px solid #f0d58a;padding:10px 12px;border-radius:8px;margin-bottom:12px}
+.note{background:#fff8e1;border:1px solid #f0d58a;padding:10px 12px;border-radius:8px;margin:0 0 12px}
+.warn{color:#9a3b00;font-size:13px}.muted{color:#666;font-size:13px}
 form{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
 label{font-size:12px;color:#555;display:flex;flex-direction:column;gap:4px}
-input,select,textarea{font:inherit;padding:7px;border:1px solid #ccc;border-radius:6px;background:#fff}
+label.chk{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:#333}
+input,select,textarea{font:inherit;padding:7px;border:1px solid #ccc;border-radius:6px;background:#fff;max-width:100%}
 label.req span::after{content:" *";color:#c00}
 .full{grid-column:1/-1}
-.btn{background:var(--p);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;display:inline-block}.btn.alt{background:#555}.btn.sm{padding:4px 8px;font-size:12px}
+.btn{background:var(--p);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;display:inline-block}.btn.alt{background:#555}.btn.sm{padding:5px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:wait}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #e2e2e2;padding:6px;text-align:start;vertical-align:top}th{background:#f0e6ea;position:sticky;top:0}
 .wrap{overflow:auto;max-height:65vh}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-@media print{nav,header,.noprint{display:none}body{background:#fff}.card{box-shadow:none}}
+.filters select,.filters input{min-width:150px}
+.dupbox{border:2px solid #f0d58a;border-radius:10px;padding:12px;margin-bottom:12px;background:#fffdf5}
+.dup{background:#fff;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:10px}
+.tag{font-size:12px;padding:3px 8px;border-radius:12px;background:#ffe0b2}.tag.red{background:#ffcdd2}
+.impc{border:1px solid #e4d6dc;border-radius:10px;padding:12px;margin-bottom:12px}
+#toast{position:fixed;bottom:18px;inset-inline-start:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 2px 8px #0003;z-index:20;display:none;max-width:90vw}
+[dir=rtl] #toast{transform:translateX(50%)}
+#toast.err{background:#b00020}
+@media print{nav,header,.noprint,#toast{display:none}body{background:#fff}.card{box-shadow:none}}
 </style>
 </head>
 <body>
 <header id="hdr"></header>
 <nav id="nav"></nav>
 <main id="app"></main>
+<div id="toast" role="status"></div>
 <script>
-const YEAR="2027/2028", KEY="qstss_needs";
-// Schools: edit names here. "id" is used to keep each school's data separate — don't change an id after people start entering data.
+// ===== SETTINGS =====
+// Paste the Google Apps Script Web app URL here (ends with /exec). Leave empty to save in each browser only.
+const API_URL = "https://script.google.com/macros/s/AKfycbyEItECDo9tS40Ws6kQc_hNEtJTMr4pIN4GBGD_GEnM3yRIFa1nlYYk_FbKuSVnjTiwCw/exec";
+const YEAR="2027/2028", KEY="qstss_needs", REMOTE=!!API_URL;
+// Schools: "id" keeps each school's data separate — don't change an id after people start entering data.
 const SCHOOLS=[
- {id:"umalsameem",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – أم السنيم",en:"QSTSS – Um Alsaneem"},
- {id:"alsakhama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – الصخامة",en:"QSTSS – Al Sakhama"},
+ {id:"umalsaneem",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – أم السنيم",en:"QSTSS – Um Alsameem"},
+ {id:"alsakhama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية - الصخامة",en:"QSTSS – Al Sakhama"},
  {id:"rawdetalhamama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – روضة الحمامة",en:"QSTSS – Rawdet Alhamama"}
 ];
 const L={
@@ -66,8 +82,7 @@ techReq:["جديد / New","استبدال / Replacement","ترقية / Upgrade",
 techItems:["أجهزة كمبيوتر محمولة / Laptops","أجهزة كمبيوتر محمولة للمسابقات الدولية (WorldSkills) / Laptops for International Competitions","أجهزة كمبيوتر محمولة Apple لتدريس تكنولوجيا التصميم / Apple Laptops – Design Technology","جهاز كمبيوتر مكتبي / Desktop PC","جهاز كمبيوتر متكامل احترافي – المكتبة الرقمية / Professional All-in-One PC – Digital Library","جهاز لوحي (تابلت) / Tablet","شاشات عرض تفاعلية (ذكية) متنقلة / Mobile Interactive Displays","أجهزة عرض تفاعلية / Interactive Projectors","شاشات تلفزيون / TV Screens","جهاز عرض بصري / Visualizer","نظام مؤتمرات الفيديو / Video Conferencing","نظام صوت احترافي سقفي / Professional In-Ceiling Audio System","طابعة بطاقات / ID Card Printer","طابعة Plotter / Plotter Printer","طابعة HP / HP Printer","آلة تصوير HP / HP Copier","أجهزة مسح ضوئي سريعة / High-Speed Scanners","قارئ باركود / Barcode Readers","أجهزة بصمة للموظفين / Staff Biometric Devices","نظام كاميرات مراقبة / Indoor & Outdoor CCTV System","هواتف أرضية / Landline Phones","كاميرا Sony α7 IV / Camera Body","عدسة Sony FE 24-70mm f/2.8 GM / Lens","عدسة Sony FE 50mm f/1.8 / Lens","عدسة Sony FE 85mm f/1.8 / Lens","نظام ميكروفون لاسلكي RØDE Wireless GO II / Wireless Microphone System","حامل Manfrotto ONE Carbon / Carbon Tripod with Fluid Head","بطاقات ذاكرة SDXC V90 أو CFexpress / Memory Cards","حامل فيديو احترافي Manfrotto / Professional Video Tripod","جهاز تلقين / Teleprompter","بطاريات Sony NP-FZ100 مع شاحن / Extra Batteries + Dual Charger","إضاءة Aputure LS C300d II / Professional Lighting","حامل إضاءة C-Stand / Light Stand","فلاش للكاميرا / Detachable Camera Flash","جهاز إرسال فيديو لاسلكي / Wireless Video Transmitter"],
 labs:["مختبر الطائرات المسيّرة / Drones Lab","مختبر الفيزياء التطبيقية / Applied Physics Lab","مختبر المحاكاة الطبية / Medical Simulation Lab","مختبر التحليل الكيميائي / Chemical Analysis Lab","مختبر التصميم الهندسي / Engineering Design Lab","مختبر الاتصالات / Communication Lab","مختبر التصنيع الرقمي / Fab Lab","مختبر الشبكات / Networking Lab","مختبر علوم الفضاء / Space Science Lab","مختبر علوم الحاسوب / CS Lab","مختبر اللغات / Languages Lab","مختبر الواقع المعزز / AR Lab","مختبر الواقع الافتراضي / VR Lab","مختبر STEM / STEM Lab","مختبر الطب الحيوي / BioMed Lab","مختبر الروبوتات / Robotics Lab","مختبر الطاقة / Energy Lab","مختبر الأحياء / Biology Lab","مختبر الكيمياء / Chemistry Lab","مختبر الفيزياء / Physics Lab"]
 };
-// Labels and list values are stored as "Arabic / English" (or "Arabic | English" where the text itself contains "/").
-// Saved data keeps the full bilingual value; only the display switches language.
+// Labels/list values are "Arabic / English" (or "Arabic | English" when the text contains "/"). Data keeps the bilingual value.
 // Field: [key, label, type(t/n/d/s/ta/dl), list, required]
 const DEPT=["dept","القسم / Department","s","dept",1], QTY=["qty","الكمية / Qty","n","",1], PRICE=["price","سعر الوحدة (ر.ق) / Unit Price (QAR)","n"], UNIT=["unit","الوحدة / Unit","s","unit"];
 const SPEC=["spec","المواصفات / Specifications","ta"], BRAND=["brand","البراند المطلوب / Required Brand","t"], URLF=["url","الرابط / المورد المقترح | URL / Suggested Supplier","t"];
@@ -81,20 +96,14 @@ dept:{title:"احتياجات الأقسام | Department Needs",f:[DEPT,["needT
 labs:{title:"المختبرات | Labs",f:[["lab","المختبر / Lab","s","labs",1],["itemType","نوع البند / Item Type","s","itemType",1],["item","اسم الصنف / Item","t","",1],SPEC,BRAND,URLF,UNIT,QTY,PRICE,...TAIL]},
 research:{title:"البحث العلمي | Scientific Research",f:[["itemType","نوع البند / Item Type","s","itemType",1],["item","اسم الصنف / Item","t","",1],SPEC,["purpose","الغرض من الشراء / Purpose","t"],BRAND,URLF,UNIT,QTY,PRICE,...TAIL]}
 };
+// Fields kept after "Save & Add" so the next item is faster
+const STICKY=["lab","dept","priority","status","itemType","unit"];
 
-// ---- storage (per school) ----
+// ===== small helpers =====
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
- set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){alert(T("تعذّر الحفظ في هذا المتصفح.","Could not save in this browser."));return false}},
+ set:(k,v)=>{try{localStorage.setItem(k,v);return true}catch(e){return false}},
  del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 let lang=ls.get("qstss_lang")==="en"?"en":"ar";
-let school=SCHOOLS.some(s=>s.id===ls.get("qstss_school"))?ls.get("qstss_school"):null;
-const dbKey=id=>KEY+":"+(id||school);
-function loadDB(id){let d={};try{d=JSON.parse(ls.get(dbKey(id))||"{}")||{}}catch(e){} for(const k in C)d[k]=Array.isArray(d[k])?d[k]:[];return d;}
-const saveDB=()=>ls.set(dbKey(),JSON.stringify(DB));
-let DB=school?loadDB():null;
-let view=school?"dash":"pick", editId=null, rfqSrc="tech";
-
-// ---- language ----
 const T=(a,e)=>lang==="ar"?a:e;
 const AR=/[؀-ۿ]/;
 function tr(s){if(s==null)return "";s=String(s);
@@ -107,64 +116,266 @@ const fmt=n=>(+n||0).toLocaleString("en-US")+" "+T("ر.ق","QAR");
 const total=(k,r)=>k==="subs"?(+r.cost||0):(+r.qty||0)*(+r.price||0);
 const hasPrice=(k,r)=>k==="subs"?+r.cost>0:+r.price>0;
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const jsq=s=>String(s??"").replace(/[^\w|.-]/g,"");
 const days=d=>d?Math.ceil((new Date(d)-new Date())/864e5):"";
 const shown=(f,v)=>f[2]==="s"?tr(v):(v??"");
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+let idn=0;const newId=()=>Date.now().toString(36)+(idn++).toString(36)+Math.random().toString(36).slice(2,7);
+const nrm=s=>String(s??"").toLowerCase().replace(/[ً-ْـ]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[^\p{L}\p{N}]+/gu," ").trim();
+const grpKey=k=>k==="labs"?"lab":C[k].f.some(f=>f[0]==="dept")?"dept":null;
+function toast(m,err){const t=document.getElementById("toast");t.textContent=m;t.className=err?"err":"";t.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display="none",err?7000:2500);}
 
+// ===== data: shared Google Sheet (REMOTE) or this browser =====
+const localKey=id=>KEY+":"+id;
+function normData(d){d=d&&typeof d==="object"?d:{};for(const k in C)d[k]=Array.isArray(d[k])?d[k]:[];d._ignored=Array.isArray(d._ignored)?d._ignored:[];return d;}
+function loadLocal(id){let d={};try{d=JSON.parse(ls.get(localKey(id))||"{}")}catch(e){}return normData(d);}
+function saveLocal(id,d){if(!ls.set(localKey(id),JSON.stringify(d)))throw new Error(T("المتصفح لا يسمح بالحفظ","This browser blocked saving"));}
+const local={
+ async list(){return loadLocal(school);},
+ async save(cat,recs){const d=loadLocal(school);for(const r of recs){const i=d[cat].findIndex(x=>x.id===r.id);if(i>=0)d[cat][i]=r;else d[cat].push(r);}saveLocal(school,d);return d;},
+ async del(cat,ids){const d=loadLocal(school);d[cat]=d[cat].filter(x=>!ids.includes(x.id));saveLocal(school,d);return d;},
+ async ignore(cat,key){const d=loadLocal(school);if(!d._ignored.includes(key))d._ignored.push(key);saveLocal(school,d);return d;}};
+const remote={
+ async call(p){const r=await fetch(API_URL,{method:"POST",body:JSON.stringify({...p,school})});
+  if(!r.ok)throw new Error("HTTP "+r.status);const j=await r.json();if(!j.ok)throw new Error(j.error||"Server error");return normData(j.data);},
+ list(){return this.call({action:"list"})},
+ save(cat,recs){return this.call({action:"save",cat,records:recs})},
+ del(cat,ids){return this.call({action:"delete",cat,ids})},
+ ignore(cat,key){return this.call({action:"ignore",key})}};
+const BE=REMOTE?remote:local;
+
+// ===== state =====
+let school=SCHOOLS.some(s=>s.id===ls.get("qstss_school"))?ls.get("qstss_school"):null;
+let DB=null, IGN=new Set(), view="pick", editId=null, rfqSrc="tech", dirty=false, dupOpen=null, IMP=null;
+let loadErr="", syncing=false, busyN=0, ver=0, lastSync=null;
+const flt={};
+let sticky={};try{sticky=JSON.parse(ls.get("qstss_sticky")||"{}")||{}}catch(e){}
+
+function setData(d){DB=normData(d);IGN=new Set(DB._ignored);lastSync=new Date();if(REMOTE)ls.set("qstss_cache:"+school,JSON.stringify(DB));}
+async function run(fn,okMsg){busyN++;header();ver++;
+ try{setData(await fn());loadErr="";if(okMsg)toast(okMsg);return true;}
+ catch(e){toast(T("لم يتم الحفظ: ","Not saved: ")+e.message,true);return false;}
+ finally{busyN--;header();}}
+async function refresh(silent){if(!REMOTE||!school||syncing)return;syncing=true;const v=ver;header();
+ try{const d=await BE.list();if(v!==ver)return;loadErr="";const changed=!DB||JSON.stringify(normData(d))!==JSON.stringify(DB);setData(d);
+  if(changed&&view!=="import"&&!(dirty&&C[view]))render();}
+ catch(e){loadErr=e.message;if(!DB)render();else if(!silent)toast(T("تعذّر التحديث: ","Could not refresh: ")+e.message,true);}
+ finally{syncing=false;header();}}
+if(REMOTE){setInterval(()=>{if(school&&view!=="pick"&&document.visibilityState==="visible"&&!busyN)refresh(true);},45000);
+ document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&school&&view!=="pick")refresh(true);});}
+
+// ===== navigation =====
 function setLang(){lang=lang==="ar"?"en":"ar";ls.set("qstss_lang",lang);render();}
-function pickSchool(id){school=id;ls.set("qstss_school",id);DB=loadDB();view="dash";editId=null;rfqSrc="tech";render();scrollTo(0,0);}
-function changeSchool(){view="pick";editId=null;render();}
-function go(v){view=school?v:"pick";editId=null;render();}
+function pickSchool(id){school=id;ls.set("qstss_school",id);editId=null;rfqSrc="tech";view="dash";DB=null;dupOpen=null;loadErr="";
+ if(REMOTE){try{const c=ls.get("qstss_cache:"+id);if(c)setData(JSON.parse(c));}catch(e){}}else setData(loadLocal(id));
+ render();scrollTo(0,0);if(REMOTE)refresh();}
+function changeSchool(){view="pick";editId=null;IMP=null;render();}
+function go(v){view=school?v:"pick";editId=null;dupOpen=null;render();scrollTo(0,0);}
 
 function header(){const inSchool=school&&view!=="pick";
+ const st=!REMOTE?`<span class="chip bad" title="${T("البيانات لا تُشارك مع الآخرين","Data is not shared with others")}">${T("محفوظ في هذا المتصفح فقط","Saved in this browser only")}</span>`
+  :busyN?`<span class="chip">${T("جارٍ الحفظ…","Saving…")}</span>`:syncing?`<span class="chip">${T("جارٍ التحديث…","Updating…")}</span>`
+  :loadErr?`<span class="chip bad">${T("غير متصل","Not connected")}</span>`:`<span class="chip">● ${T("متصل بالجدول المشترك","Shared sheet")}</span>`;
  document.getElementById("hdr").innerHTML=`<div><h1>${T("ملف حصر احتياجات المدارس","School Needs Inventory")}</h1>
  <p>${inSchool?esc(SN(school)):T("اختر المدرسة للبدء","Choose a school to start")} — ${T("العام الدراسي","Academic Year")} ${YEAR}</p></div>
- <div class="hbtns">${inSchool?`<button class="hbtn" onclick="changeSchool()">${T("تغيير المدرسة","Change school")}</button>`:""}
+ <div class="hbtns">${inSchool?st:""}${inSchool&&REMOTE?`<button class="hbtn" onclick="refresh()">${T("تحديث","Refresh")}</button>`:""}${inSchool?`<button class="hbtn" onclick="changeSchool()">${T("تغيير المدرسة","Change school")}</button>`:""}
  <button class="hbtn" onclick="setLang()" lang="${lang==="ar"?"en":"ar"}">${lang==="ar"?"English":"العربية"}</button></div>`;}
-function nav(){const n=document.getElementById("nav");if(view==="pick"){n.innerHTML="";return;}
+function nav(){const n=document.getElementById("nav");if(view==="pick"||!DB){n.innerHTML="";return;}
  const tabs=[["dash","لوحة الملخص | Dashboard"],...Object.entries(C).map(([k,v])=>[k,v.title]),["rfq","طلب عروض أسعار | RFQ"],["data","البيانات | Data"],["help","التعليمات | Help"]];
  n.innerHTML=tabs.map(([k,t])=>`<button class="${k===view?"on":""}" onclick="go('${k}')">${esc(tr(t))}</button>`).join("");}
 function render(){const h=document.documentElement;h.lang=lang;h.dir=lang==="ar"?"rtl":"ltr";
  document.title=T("حصر احتياجات المدارس","School Needs Inventory")+(school&&view!=="pick"?" – "+SN(school):"");
- header();nav();const a=document.getElementById("app");
- a.innerHTML=view==="pick"?pick():view==="dash"?dash():view==="rfq"?rfq():view==="data"?data():view==="help"?help():cat(view);
- const f=document.getElementById("f"); if(f) f.oninput=()=>{document.getElementById("tot").textContent=fmt(total(view,Object.fromEntries(new FormData(f))));};}
+ header();nav();const a=document.getElementById("app");dirty=false;
+ if(view!=="pick"&&!DB){a.innerHTML=loadErr?`<div class="card"><h2>${T("تعذّر الاتصال بالجدول المشترك","Could not reach the shared sheet")}</h2><p class="warn">${esc(loadErr)}</p><button class="btn" onclick="refresh()">${T("إعادة المحاولة","Try again")}</button></div>`:`<div class="card">${T("جارٍ تحميل البيانات…","Loading data…")}</div>`;return;}
+ a.innerHTML=view==="pick"?pick():view==="dash"?dash():view==="rfq"?rfq():view==="data"?data():view==="help"?help():view==="import"?importView():cat(view);
+ const f=document.getElementById("f");
+ if(f){f.oninput=()=>{dirty=true;document.getElementById("tot").textContent=fmt(total(view,Object.fromEntries(new FormData(f))));};updTable(view);}}
 
-function pick(){const cnt=id=>{const d=loadDB(id);return Object.keys(C).reduce((s,k)=>s+d[k].length,0);};
+function pick(){const cnt=id=>{const d=REMOTE?(()=>{try{return normData(JSON.parse(ls.get("qstss_cache:"+id)||"{}"))}catch(e){return normData()}})():loadLocal(id);return Object.keys(C).reduce((s,k)=>s+d[k].length,0);};
  return `<div class="card"><h2>${T("اختر المدرسة","Choose your school")}</h2>
  <p>${T("لكل مدرسة بياناتها الخاصة. يمكنك تغيير المدرسة لاحقًا من أعلى الصفحة.","Each school has its own data. You can switch schools later from the top of the page.")}</p>
- <div class="schools">${SCHOOLS.map(s=>`<button class="school" onclick="pickSchool('${s.id}')"><b>${esc(T(s.ar,s.en))}</b>${cnt(s.id)} ${T("بند محفوظ في هذا المتصفح","items saved in this browser")}</button>`).join("")}</div></div>`;}
+ <div class="schools">${SCHOOLS.map(s=>{const n=cnt(s.id);return `<button class="school" onclick="pickSchool('${s.id}')"><b>${esc(T(s.ar,s.en))}</b>${REMOTE?(n?`${n} ${T("بند","items")}`:""):`${n} ${T("بند محفوظ في هذا المتصفح","items saved in this browser")}`}</button>`}).join("")}</div></div>`;}
 
+// ===== entry forms =====
 function input(f,val){const [k,lab,t,o,req]=f,v=esc(val);let h;
- if(t==="s") h=`<select name="${k}" ${req?"required":""}><option value=""></option>${L[o].map(x=>`<option value="${esc(x)}" ${x===val?"selected":""}>${esc(tr(x))}</option>`).join("")}</select>`;
+ if(t==="s"){const extra=val&&!L[o].includes(val)?`<option value="${v}" selected>${v}</option>`:"";
+  h=`<select name="${k}" ${req?"required":""}><option value=""></option>${extra}${L[o].map(x=>`<option value="${esc(x)}" ${x===val?"selected":""}>${esc(tr(x))}</option>`).join("")}</select>`;}
  else if(t==="ta") h=`<textarea name="${k}" rows="2">${v}</textarea>`;
  else if(t==="dl") h=`<input name="${k}" list="dl_${k}" value="${v}" ${req?"required":""}><datalist id="dl_${k}">${L[o].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`;
  else h=`<input name="${k}" type="${t==="n"?"number":t==="d"?"date":"text"}" ${t==="n"?'min="0" step="any"':""} value="${v}" ${req?"required":""}>`;
  return `<label class="${req?"req":""} ${t==="ta"?"full":""}"><span>${esc(tr(lab))}</span>${h}</label>`;}
-
-function cat(k){const c=C[k],rows=DB[k],r=(editId&&rows.find(x=>x.id===editId))||{status:L.status[0]};
- return `<div class="card"><h2>${esc(tr(c.title))}</h2><form id="f" onsubmit="save(event,'${k}')">${c.f.map(f=>input(f,r[f[0]])).join("")}
- <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn">${editId?T("تحديث","Update"):T("إضافة","Add")}</button>${editId?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:""}</div></form></div>
- <div class="card"><div class="bar"><input placeholder="${T("بحث","Search")}" oninput="filt(this.value)"><span>${rows.length} ${T("بند","items")} — ${fmt(rows.reduce((s,x)=>s+total(k,x),0))}</span><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
- <div class="wrap"><table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
- ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${esc(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${x.id}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${x.id}')">${T("حذف","Delete")}</button></td></tr>`).join("")}
- </tbody></table></div></div>`;}
-function save(e,k){e.preventDefault();const r=Object.fromEntries(new FormData(e.target));
+const blank=k=>({status:L.status[0],...(sticky[k]||{}),by:sticky.by||""});
+function cat(k){const c=C[k],ex=editId&&DB[k].find(x=>x.id===editId),r=ex||blank(k);
+ return `<div class="card"><h2>${esc(tr(c.title))}</h2>${ex?`<p class="note">${T("أنت تعدّل بندًا موجودًا.","You are editing an existing item.")}</p>`:""}
+ <form id="f" onsubmit="save(event,'${k}')">${c.f.map(f=>input(f,r[f[0]])).join("")}
+ <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn" id="sbtn">${ex?T("حفظ التعديل","Save changes"):T("حفظ وإضافة","Save & Add")}</button>${ex?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:`<span class="muted">${T("يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة بعد الحفظ.","Lab/department, name, priority, status, item type and unit stay filled after saving.")}</span>`}</div></form></div>
+ <div class="card"><div class="bar filters">${filterBar(k)}</div>
+ <div class="bar"><b id="sum"></b><button class="btn sm" id="dupb" onclick="toggleDup('${k}')"></button><button class="btn sm alt" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
+ <div id="dup"></div><div class="wrap" id="tw"></div></div>`;}
+async function save(e,k){e.preventDefault();const f=e.target,r=Object.fromEntries(new FormData(f));
  const ex=editId&&DB[k].find(x=>x.id===editId);
- if(ex) Object.assign(ex,r);
- else DB[k].push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),created:new Date().toISOString().slice(0,10),...r});
- saveDB();editId=null;render();}
-function edit(id){editId=id;render();scrollTo(0,0);}
-function del(k,id){if(confirm(T("حذف هذا البند؟","Delete this item?"))){DB[k]=DB[k].filter(x=>x.id!==id);saveDB();render();}}
-function filt(q){q=q.toLowerCase();document.querySelectorAll("#t tbody tr").forEach(tr=>tr.style.display=tr.textContent.toLowerCase().includes(q)?"":"none");}
+ const rec=ex?{...ex,...r}:{id:newId(),created:today(),...r};
+ if(!ex){const sim=similarTo(k,rec);
+  if(sim.length&&!confirm(T("يوجد بند مشابه في نفس المختبر/القسم:","A similar item already exists in the same lab/department:")+"\n"+sim.map(x=>`• ${x.item}${x.spec?" – "+String(x.spec).slice(0,60):""} (${x.by||"-"}, ${T("الكمية","qty")} ${x.qty||x.users||"-"})`).join("\n")+"\n\n"+T("إضافة على أي حال؟","Add it anyway?")))return;}
+ const b=document.getElementById("sbtn");if(b)b.disabled=true;
+ if(!ex){sticky[k]={};STICKY.forEach(s=>{if(r[s])sticky[k][s]=r[s];});if(r.by)sticky.by=r.by;ls.set("qstss_sticky",JSON.stringify(sticky));}
+ const ok=await run(()=>BE.save(k,[rec]),ex?T("تم حفظ التعديل ✓","Changes saved ✓"):T("تم الحفظ ✓ — أضف البند التالي","Saved ✓ — add the next item"));
+ if(ok){editId=null;render();const it=document.querySelector('#f [name=item]');if(it&&!ex)it.focus();}
+ else if(b)b.disabled=false;}
+function edit(id){const k=Object.keys(C).find(k=>DB[k].some(x=>x.id===id));if(!k)return;view=k;editId=id;render();scrollTo(0,0);}
+async function del(k,id){const x=DB[k].find(x=>x.id===id);if(!x)return;
+ if(!confirm(T("حذف هذا البند؟","Delete this item?")+"\n• "+x.item))return;
+ if(await run(()=>BE.del(k,[id]),T("تم الحذف","Deleted")))render();}
 
+// ===== filters (lab/department, person, item type, search) =====
+const F=k=>flt[k]||(flt[k]={g:"",by:"",type:"",q:""});
+function filtered(k){const f=F(k),g=grpKey(k),q=nrm(f.q);
+ return DB[k].filter(x=>(!f.g||!g||x[g]===f.g)&&(!f.by||(x.by||"")===f.by)&&(!f.type||x.itemType===f.type)&&(!q||nrm(Object.values(x).map(v=>v+" "+tr(v)).join(" ")).includes(q)));}
+function filterBar(k){const f=F(k),g=grpKey(k),rows=DB[k];
+ const people=[...new Set(rows.map(x=>x.by).filter(Boolean).concat(f.by?[f.by]:[]))].sort();
+ const opt=(v,t,sel)=>`<option value="${esc(v)}" ${sel?"selected":""}>${esc(t)}</option>`;
+ let h="";
+ if(g){const list=L[g==="lab"?"labs":"dept"];h+=`<label>${g==="lab"?T("المختبر","Lab"):T("القسم","Department")}<select onchange="setF('${k}','g',this.value)">${opt("",g==="lab"?T("كل المختبرات","All labs"):T("كل الأقسام","All departments"),!f.g)}${list.map(o=>opt(o,`${tr(o)} (${rows.filter(x=>x[g]===o).length})`,f.g===o)).join("")}</select></label>`;}
+ h+=`<label>${T("مقدم الطلب","Person")}<select onchange="setF('${k}','by',this.value)">${opt("",T("الجميع","Everyone"),!f.by)}${people.map(p=>opt(p,p,f.by===p)).join("")}</select></label>`;
+ if(C[k].f.some(x=>x[0]==="itemType"))h+=`<label>${T("نوع البند","Item type")}<select onchange="setF('${k}','type',this.value)">${opt("",T("الكل","All"),!f.type)}${L.itemType.map(o=>opt(o,tr(o),f.type===o)).join("")}</select></label>`;
+ h+=`<label>${T("بحث","Search")}<input value="${esc(f.q)}" oninput="setF('${k}','q',this.value)"></label>`;
+ if(f.g||f.by||f.type||f.q)h+=`<button class="btn sm alt" style="align-self:flex-end" onclick="flt['${k}']=null;render()">${T("مسح الفلاتر","Clear filters")}</button>`;
+ return h;}
+function setF(k,key,v){F(k)[key]=v;updTable(k);}
+function updTable(k){const c=C[k],rows=filtered(k),pairs=dupPairs(k);
+ document.getElementById("sum").textContent=`${rows.length}${rows.length!==DB[k].length?" / "+DB[k].length:""} ${T("بند","items")} — ${fmt(rows.reduce((s,x)=>s+total(k,x),0))}`;
+ const b=document.getElementById("dupb");b.textContent=`${T("فحص التكرار","Check duplicates")} (${pairs.length})`;b.classList.toggle("alt",!pairs.length);
+ document.getElementById("dup").innerHTML=dupOpen===k?dupHTML(k,pairs):"";
+ document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
+ ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${esc(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
+ </tbody></table>`;}
+
+// ===== duplicate check =====
+function bigr(s){s=s.replace(/ /g,"");const m=new Map();for(let i=0;i<s.length-1;i++){const b=s.slice(i,i+2);m.set(b,(m.get(b)||0)+1);}return m;}
+function simN(a,b){if(!a||!b)return 0;if(a===b)return 1;const A=bigr(a),B=bigr(b);let n=0,ta=0,tb=0;A.forEach(v=>ta+=v);B.forEach(v=>tb+=v);A.forEach((v,k)=>n+=Math.min(v,B.get(k)||0));
+ let d=ta+tb?2*n/(ta+tb):0;const s=a.length<b.length?a:b,l=a.length<b.length?b:a;if(s.length>=5&&l.includes(s))d=Math.max(d,.8);return d;}
+const pairKey=(a,b)=>[a.id,b.id].sort().join("|");
+function dupPairs(k){const g=grpKey(k),f=F(k),rows=DB[k].filter(x=>!f.g||!g||x[g]===f.g).map(x=>({x,n:nrm(x.item)})),out=[];
+ for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){const a=rows[i],b=rows[j];
+  if(g&&(a.x[g]||"")!==(b.x[g]||""))continue;const s=simN(a.n,b.n);if(s<.75)continue;
+  if(IGN.has(pairKey(a.x,b.x)))continue;out.push({a:a.x,b:b.x,s,same:a.n===b.n&&nrm(a.x.spec)===nrm(b.x.spec)});}
+ return out.sort((x,y)=>(y.same-x.same)||(y.s-x.s));}
+function similarTo(k,rec){const g=grpKey(k),n=nrm(rec.item);return DB[k].filter(x=>(!g||(x[g]||"")===(rec[g]||""))&&simN(n,nrm(x.item))>=.75).slice(0,3);}
+function toggleDup(k){dupOpen=dupOpen===k?null:k;updTable(k);}
+async function ignoreDup(k,key){if(await run(()=>BE.ignore(k,key),T("تم — لن يظهر هذا الزوج مرة أخرى","Done — this pair won't be flagged again")))render();}
+function dupHTML(k,pairs){if(!pairs.length)return `<p class="note">${T("لا توجد بنود مكررة أو متشابهة.","No duplicate or similar items found.")}</p>`;
+ const g=grpKey(k);
+ return `<div class="dupbox"><h3 style="margin-top:0">${T("بنود مكررة أو متشابهة","Duplicate or similar items")} (${pairs.length})</h3>
+ <p class="muted">${T("كل البنود من جميع الموظفين في نفس المختبر/القسم. احذف المكرر، أو اضغط «ليس تكرارًا» إذا كانا مختلفين (مثل مقاسين أو نوعين من الخشب أو الكابلات).","All staff's items in the same lab/department. Delete the repeat, or press “Not a duplicate” when they differ (e.g. two sizes or types of wood or cable).")}</p>
+ ${pairs.map(p=>`<div class="dup"><div class="bar"><span class="tag ${p.same?"red":""}">${p.same?T("مطابق","Same item"):T("متشابه","Similar")+" "+Math.round(p.s*100)+"%"}</span>${g&&p.a[g]?`<b>${esc(tr(p.a[g]))}</b>`:""}<button class="btn sm alt" onclick="ignoreDup('${k}','${jsq(pairKey(p.a,p.b))}')">${T("ليس تكرارًا – احتفظ بالاثنين","Not a duplicate – keep both")}</button></div>
+ <div class="wrap"><table><thead><tr><th>${T("الصنف","Item")}</th><th>${T("المواصفات","Specifications")}</th><th>${T("الكمية","Qty")}</th><th>${T("سعر الوحدة","Unit price")}</th><th>${T("مقدم الطلب","Requested by")}</th><th>${T("التاريخ","Added")}</th><th></th></tr></thead><tbody>
+ ${[p.a,p.b].map(x=>`<tr><td>${esc(x.item)}</td><td>${esc(x.spec)}</td><td>${esc(x.qty??x.users??"")} ${esc(tr(x.unit||""))}</td><td>${esc(x.price??x.cost??"")}</td><td>${esc(x.by)}</td><td>${esc(x.created)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")}</tbody></table></div></div>`).join("")}</div>`;}
+
+// ===== Excel import / export =====
+async function loadXLSX(){if(window.XLSX)return;await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=res;s.onerror=()=>rej(new Error(T("تعذّر تحميل قارئ Excel. تحقق من الاتصال بالإنترنت.","Could not load the Excel reader. Check the internet connection.")));document.head.appendChild(s);});}
+const hparts=s=>String(s??"").replace(/\([^)]*\)/g," ").split(/\s*[|/\n\r]\s*/).map(nrm).filter(Boolean);
+const FP={};const fieldParts=k=>FP[k]||(FP[k]=C[k].f.map(f=>({key:f[0],p:hparts(f[1])})));
+function matchHeaders(row,k){const fs=fieldParts(k),cand=[];
+ row.forEach((h,i)=>{const hp=hparts(h);if(!hp.length)return;fs.forEach(f=>{let s=0;hp.forEach(a=>f.p.forEach(b=>{if(a===b)s+=1;else if(a.length>=4&&b.length>=4&&(a.includes(b)||b.includes(a)))s+=.4;}));if(s>=.8)cand.push({i,key:f.key,s});});});
+ cand.sort((a,b)=>b.s-a.s);const map={},used=new Set();
+ for(const x of cand){if(x.key in map||used.has(x.i))continue;map[x.key]=x.i;used.add(x.i);}
+ return {map,n:Object.keys(map).length};}
+function findLab(text){const t=nrm(text);if(t.length<2)return null;const st=t.replace(/ lab$/,"");let best=null,bs=0;
+ for(const l of L.labs){const ps=l.split(" / ").map(nrm);let s=0;
+  if(nrm(l)===t||ps.includes(t))s=3;else if(ps.some(p=>p.replace(/ lab$/,"")===st))s=2.5;
+  else{const p=ps.filter(p=>p.length>=6&&t.includes(p)).sort((a,b)=>b.length-a.length)[0];if(p)s=1+p.length/100;
+   else if(ps.some(p=>{const sp=p.replace(/ lab$/,"");return sp.length>=3&&st.startsWith(sp);}))s=1;}
+  if(s>bs){bs=s;best=l;}}
+ return best;}
+const SKIP_SHEETS=/rfq|لوحة|ملخص|القوائم|التعليمات|سجل المختبرات|lists|instructions|dashboard|summary/i;
+function detect(aoa,name,force){let best=null;const top=Math.min(aoa.length,15);
+ const labHint=findLab(name)||aoa.slice(0,top).flat().map(v=>typeof v==="string"&&v.length<200?findLab(v):null).find(Boolean)||"";
+ const resHint=/research|بحث/i.test(name+" "+aoa.slice(0,3).flat().join(" "));
+ for(let r=0;r<top;r++){const row=aoa[r]||[];if(row.filter(v=>v!==""&&v!=null).length<3)continue;
+  for(const k of (force?[force]:Object.keys(C))){const m=matchHeaders(row,k);if(!("item" in m.map)||m.n<3)continue;
+   const c={k,hr:r,map:m.map,n:m.n};
+   const better=!best||c.n>best.n||(c.n===best.n&&((c.k==="labs"&&(labHint||!resHint))||(c.k==="research"&&resHint&&!labHint)));
+   if(better)best=c;}}
+ if(!best)return null;
+ best.lab=best.k==="labs"&&!("lab" in best.map)?labHint:"";
+ return best;}
+function matchOpt(list,v){v=String(v).trim();if(list.includes(v))return{ok:1,v};const n=nrm(v);
+ for(const o of list){const ps=o.split(" / ").map(nrm);if(nrm(o)===n||ps.includes(n))return{ok:1,v:o};}
+ for(const o of list){const ps=o.split(" / ").map(nrm).filter(p=>p.length>1);if(ps.length&&ps.every(p=>n.includes(p)))return{ok:1,v:o};}
+ return{ok:0,v};}
+const serial=v=>{const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10);};
+function conv(f,v,s){if(v===null||v===undefined||v==="")return "";const t=f[2];
+ if(t==="s"){const m=matchOpt(L[f[3]],v);if(!m.ok)s.unmatched.add(tr(f[1])+": "+v);return m.v;}
+ if(t==="n"){if(typeof v==="number")return String(v);const n=parseFloat(String(v).replace(/[,\s]/g,"").replace(/[^\d.-]/g,""));return isNaN(n)?"":String(n);}
+ if(t==="d"){if(typeof v==="number")return serial(v);const x=String(v).trim();if(/^\d{4}-\d\d-\d\d/.test(x))return x.slice(0,10);const d=new Date(x);return isNaN(d)?"":d.toISOString().slice(0,10);}
+ return String(v).trim();}
+function sig(k,x){const g=grpKey(k);return [g?x[g]||"":"",nrm(x.item),nrm(x.spec),String(x.qty??"")].join("|");}
+function parseSheet(s){const c=C[s.k],rows=[],seen=new Set();s.unmatched=new Set();
+ const have=new Set(DB[s.k].map(x=>sig(s.k,x)));
+ for(let r=s.hr+1;r<s.aoa.length;r++){const row=s.aoa[r]||[];const item=String(row[s.map.item]??"").trim();if(!item)continue;
+  const rec={};for(const f of c.f){if(!(f[0] in s.map))continue;const v=conv(f,row[s.map[f[0]]],s);if(v!=="")rec[f[0]]=v;}
+  if(s.k==="labs"&&!rec.lab&&s.lab)rec.lab=s.lab;
+  if(!rec.status)rec.status=L.status[0];
+  const sg=sig(s.k,rec);rows.push({rec,ex:/صف توضيحي|example row/i.test(rec.notes||""),exists:have.has(sg)||seen.has(sg)});seen.add(sg);}
+ s.rows=rows;}
+function pickExcel(){const i=document.createElement("input");i.type="file";i.accept=".xlsx,.xlsm,.xls,.csv";i.onchange=()=>i.files[0]&&startImport(i.files[0]);i.click();}
+async function startImport(file){busyN++;header();
+ try{await loadXLSX();const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});const sheets=[],skipped=[];
+  wb.SheetNames.forEach(n=>{const aoa=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:""});
+   const d=SKIP_SHEETS.test(n)?null:detect(aoa,n);if(d){const s={name:n,aoa,...d,include:true};parseSheet(s);if(s.rows.length)sheets.push(s);else skipped.push(n);}else skipped.push(n);});
+  IMP={file:file.name,sheets,skipped,by:sticky.by||"",skipEx:true,skipDup:true};view="import";render();scrollTo(0,0);}
+ catch(e){toast(T("تعذّر قراءة الملف: ","Could not read the file: ")+e.message,true);}
+ finally{busyN--;header();}}
+const take=s=>s.include?s.rows.filter(r=>!(IMP.skipDup&&r.exists)&&!(IMP.skipEx&&r.ex)&&!(s.k==="labs"&&!r.rec.lab)):[];
+function impCat(i,k){const s=IMP.sheets[i],d=detect(s.aoa,s.name,k);if(!d){toast(T("عناوين هذه الورقة لا تطابق هذه الصفحة","This sheet's titles don't match that page"),true);render();return;}Object.assign(s,d);parseSheet(s);render();}
+function impLab(i,v){const s=IMP.sheets[i];s.lab=v;parseSheet(s);render();}
+function sheetCard(s,i){const c=C[s.k],n=s.rows.length,ex=s.rows.filter(r=>r.ex).length,du=s.rows.filter(r=>r.exists).length,needLab=s.k==="labs"&&!("lab" in s.map);
+ return `<div class="impc"><div class="bar"><label class="chk"><input type="checkbox" ${s.include?"checked":""} onchange="IMP.sheets[${i}].include=this.checked;render()"> <b>${esc(s.name)}</b></label>
+ <label>${T("تُضاف إلى صفحة","Add to page")}<select onchange="impCat(${i},this.value)">${Object.keys(C).map(k=>`<option value="${k}" ${k===s.k?"selected":""}>${esc(tr(C[k].title))}</option>`).join("")}</select></label>
+ ${needLab?`<label class="req"><span>${T("المختبر","Lab")}</span><select onchange="impLab(${i},this.value)"><option value=""></option>${L.labs.map(l=>`<option value="${esc(l)}" ${l===s.lab?"selected":""}>${esc(tr(l))}</option>`).join("")}</select></label>`:""}</div>
+ <p class="muted">${n} ${T("صف","rows")} — ${T("سيُستورد","will import")} <b>${take(s).length}</b>${du?` · ${du} ${T("موجود مسبقًا","already in the site")}`:""}${ex?` · ${ex} ${T("صف توضيحي","example rows")}`:""}<br>${T("الأعمدة المطابقة","Matched columns")}: ${Object.keys(s.map).map(k=>esc(tr(c.f.find(f=>f[0]===k)[1]))).join(" · ")}</p>
+ ${needLab&&!s.lab?`<p class="warn">${T("اختر المختبر لهذه الورقة.","Choose the lab for this sheet.")}</p>`:""}
+ ${s.unmatched.size?`<p class="warn">${T("قيم ليست في القوائم المنسدلة (ستُحفظ كما هي)","Values not in the dropdown lists (kept as written)")}: ${[...s.unmatched].slice(0,6).map(esc).join(" · ")}${s.unmatched.size>6?" …":""}</p>`:""}
+ <div class="wrap" style="max-height:200px"><table><thead><tr><th>${T("الصنف","Item")}</th><th>${T("الكمية","Qty")}</th><th>${T("سعر الوحدة","Unit price")}</th><th></th></tr></thead><tbody>${s.rows.slice(0,8).map(r=>`<tr><td>${esc(r.rec.item)}</td><td>${esc(r.rec.qty??r.rec.users??"")}</td><td>${esc(r.rec.price??r.rec.cost??"")}</td><td class="muted">${r.exists?T("موجود مسبقًا","already in site"):r.ex?T("صف توضيحي","example"):""}</td></tr>`).join("")}</tbody></table></div>${n>8?`<p class="muted">+${n-8} ${T("صف آخر","more rows")}</p>`:""}</div>`;}
+function importView(){if(!IMP)return dash();const I=IMP,n=I.sheets.reduce((s,x)=>s+take(x).length,0);
+ return `<div class="card"><h2>${T("استيراد من Excel","Import from Excel")} — ${esc(I.file)}</h2>
+ <p class="muted">${T("تمت مطابقة الأعمدة حسب عناوينها. راجع الأوراق ثم اضغط استيراد. ستُضاف البنود إلى","Columns were matched by their titles. Check each sheet, then press Import. Items will be added to")} <b>${esc(SN(school))}</b>${T("، ويمكن تعديلها بعد ذلك.",", and can be edited afterwards.")}</p>
+ ${I.sheets.map(sheetCard).join("")||`<p class="warn">${T("لم يتم التعرف على أي ورقة. استخدم قالب Excel من صفحة البيانات.","No sheet was recognised. Use the Excel template from the Data page.")}</p>`}
+ ${I.skipped.length?`<p class="muted">${T("أوراق لم تُستورد","Sheets not imported")}: ${I.skipped.map(esc).join(" · ")}</p>`:""}
+ <div class="bar"><label>${T("مقدم الطلب (للصفوف التي بدون اسم)","Requested by (for rows without a name)")}<input value="${esc(I.by)}" oninput="IMP.by=this.value"></label>
+ <label class="chk"><input type="checkbox" ${I.skipDup?"checked":""} onchange="IMP.skipDup=this.checked;render()"> ${T("تخطي البنود الموجودة مسبقًا","Skip items already in the site")}</label>
+ <label class="chk"><input type="checkbox" ${I.skipEx?"checked":""} onchange="IMP.skipEx=this.checked;render()"> ${T("تخطي الصفوف التوضيحية","Skip example rows")}</label></div>
+ <div class="bar"><button class="btn" onclick="commitImport()" ${n?"":"disabled"}>${T("استيراد","Import")} ${n} ${T("بند","items")}</button><button class="btn alt" onclick="IMP=null;go('dash')">${T("إلغاء","Cancel")}</button></div></div>`;}
+async function commitImport(){const by=IMP.by.trim(),groups={};
+ IMP.sheets.forEach(s=>take(s).forEach(r=>{(groups[s.k]=groups[s.k]||[]).push({id:newId(),created:today(),...r.rec,...(r.rec.by||!by?{}:{by})});}));
+ const noName=Object.entries(groups).some(([k,rs])=>C[k].f.some(f=>f[0]==="by")&&rs.some(r=>!r.by));
+ if(noName){toast(T("اكتب اسم مقدم الطلب للصفوف التي بدون اسم","Enter “Requested by” for rows without a name"),true);return;}
+ let n=0;for(const k in groups){if(!await run(()=>BE.save(k,groups[k])))return;n+=groups[k].length;}
+ if(by){sticky.by=by;ls.set("qstss_sticky",JSON.stringify(sticky));}
+ IMP=null;toast(T(`تم استيراد ${n} بند ✓`,`Imported ${n} items ✓`));go("dash");}
+const sheetName=t=>(t.split(" | ")[1]||t).replace(/[\[\]:*?\/\\]/g," ").slice(0,31);
+async function exportXlsx(empty){try{await loadXLSX();const wb=XLSX.utils.book_new();
+ for(const k in C){const c=C[k],head=c.f.map(f=>f[1].replace(" | "," / "));
+  const rows=empty?[]:DB[k].map(x=>c.f.map(f=>{const v=x[f[0]]??"";return f[2]==="n"&&v!==""&&!isNaN(+v)?+v:v;}));
+  const ws=XLSX.utils.aoa_to_sheet([head,...rows]);ws["!cols"]=head.map(()=>({wch:24}));XLSX.utils.book_append_sheet(wb,ws,sheetName(c.title));}
+ const keys=Object.keys(L).filter(k=>k!=="techItems"),all=Object.values(C).flatMap(c=>c.f);
+ const lh=keys.map(k=>{const f=all.find(f=>f[3]===k);return f?f[1].replace(" | "," / "):k;}),mx=Math.max(...keys.map(k=>L[k].length));
+ const lw=[lh];for(let i=0;i<mx;i++)lw.push(keys.map(k=>L[k][i]||""));
+ const ws=XLSX.utils.aoa_to_sheet(lw);ws["!cols"]=lh.map(()=>({wch:30}));XLSX.utils.book_append_sheet(wb,ws,"Lists - القوائم");
+ XLSX.writeFile(wb,empty?"qstss-needs-template.xlsx":`qstss-${school}-${today()}.xlsx`);}
+ catch(e){toast(e.message,true);}}
+
+// ===== dashboard / RFQ / data / help =====
+function labGo(i){F("labs").g=L.labs[i];go("labs");}
 function dash(){let T0=0,N=0,NP=0,PEND=0;
  const rows=Object.entries(C).map(([k,c])=>{const r=DB[k],t=r.reduce((s,x)=>s+total(k,x),0),np=r.filter(x=>!hasPrice(k,x)).length,p=r.filter(x=>x.status===L.status[1]).length;T0+=t;N+=r.length;NP+=np;PEND+=p;
   return `<tr><td><a href="#" onclick="go('${k}');return false">${esc(tr(c.title))}</a></td><td>${r.length}</td><td>${fmt(t)}</td><td>${np}</td><td>${p}</td></tr>`;}).join("");
  const exp=DB.subs.filter(x=>{const d=days(x.end);return d!==""&&d>=0&&d<=60;}).length;
  const labRows=L.labs.map(l=>{const r=DB.labs.filter(x=>x.lab===l),sum=t=>r.filter(x=>!t||x.itemType===t).reduce((s,x)=>s+total("labs",x),0);
-  return `<tr><td>${esc(tr(l))}</td><td>${r.length}</td><td>${fmt(sum(L.itemType[0]))}</td><td>${fmt(sum(L.itemType[1]))}</td><td>${fmt(sum())}</td></tr>`;}).join("");
+  return `<tr><td><a href="#" onclick="labGo(${L.labs.indexOf(l)});return false">${esc(tr(l))}</a></td><td>${r.length}</td><td>${fmt(sum(L.itemType[0]))}</td><td>${fmt(sum(L.itemType[1]))}</td><td>${fmt(sum())}</td></tr>`;}).join("");
  const k=[[T("إجمالي التكلفة التقديرية","Total Est. Cost"),fmt(T0)],[T("إجمالي عدد البنود","Total Items"),N],[T("بنود دون سعر","Items without Price"),NP],[T("طلبات بانتظار الاعتماد","Pending Approval"),PEND],[T("اشتراكات تنتهي خلال 60 يومًا","Subscriptions Expiring in 60 Days"),exp]];
- return `<div class="kpis">${k.map(([a,b])=>`<div class="kpi">${a}<b>${b}</b></div>`).join("")}</div>
+ return `${!REMOTE?`<p class="note">${T("تنبيه: الموقع غير متصل بجدول مشترك بعد، لذلك تُحفظ البيانات في هذا المتصفح فقط ولا يراها الآخرون.","Note: the site isn't connected to a shared sheet yet, so data is saved in this browser only and others can't see it.")}</p>`:""}
+ <div class="kpis">${k.map(([a,b])=>`<div class="kpi">${a}<b>${b}</b></div>`).join("")}</div>
  <div class="card"><h3>${T("حسب الفئة","By Category")}</h3><div class="wrap"><table><thead><tr><th>${T("الفئة","Category")}</th><th>${T("عدد البنود","Items")}</th><th>${T("الإجمالي","Total")}</th><th>${T("دون سعر","No Price")}</th><th>${T("بانتظار الاعتماد","Pending")}</th></tr></thead><tbody>${rows}</tbody></table></div></div>
  <div class="card"><h3>${T("سجل المختبرات","Labs Register")}</h3><div class="wrap"><table><thead><tr><th>${T("المختبر","Lab")}</th><th>${T("عدد البنود","Items")}</th><th>${T("مستهلكات","Consumables")}</th><th>${T("أصول","Assets")}</th><th>${T("الإجمالي","Total")}</th></tr></thead><tbody>${labRows}</tbody></table></div></div>`;}
 
@@ -173,43 +384,54 @@ function rfq(){const srcs=[["tech",C.tech.title],["books",C.books.title],["resea
  const items=(rfqSrc.startsWith("lab:")?DB.labs.filter(x=>x.lab===rfqSrc.slice(4)):DB[rfqSrc]).filter(x=>x.status===L.status[4]);
  return `<div class="card"><div class="bar noprint"><label>${T("مصدر الطلب","Source")}<select onchange="rfqSrc=this.value;render()">${srcs.map(([v,t])=>`<option value="${esc(v)}" ${v===rfqSrc?"selected":""}>${esc(tr(t))}</option>`).join("")}</select></label><button class="btn" onclick="print()">${T("طباعة","Print")}</button></div>
  <h2>${T("طلب عروض أسعار","Request for Quotation (RFQ)")}</h2>
- <p><b>${esc(SN(school))}</b><br>${T("رقم الطلب","RFQ No.")}: RFQ-${YEAR}-____ — ${T("تاريخ الإصدار","Issue Date")}: ${new Date().toISOString().slice(0,10)}<br>${T("المصدر","Source")}: <b>${esc(tr(srcs.find(s=>s[0]===rfqSrc)[1]))}</b></p>
+ <p><b>${esc(SN(school))}</b><br>${T("رقم الطلب","RFQ No.")}: RFQ-${YEAR}-____ — ${T("تاريخ الإصدار","Issue Date")}: ${today()}<br>${T("المصدر","Source")}: <b>${esc(tr(srcs.find(s=>s[0]===rfqSrc)[1]))}</b></p>
  <table><thead><tr><th>${T("م","#")}</th><th>${T("الصنف","Item")}</th><th>${T("المواصفات","Specifications")}</th><th>${T("الوحدة","Unit")}</th><th>${T("الكمية","Qty")}</th><th>${T("سعر الوحدة (ر.ق)","Unit Price (QAR)")}</th><th>${T("الإجمالي (ر.ق)","Total (QAR)")}</th></tr></thead><tbody>
  ${items.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.item)}</td><td>${esc(x.spec)}</td><td>${esc(tr(x.unit))}</td><td>${esc(x.qty)}</td><td></td><td></td></tr>`).join("")||`<tr><td colspan="7">${T('لا توجد بنود بحالة "طلب عروض أسعار"','No items with RFQ status')}</td></tr>`}
  </tbody></table>
  <p>${T("اسم المورد","Supplier")}: ____________ &nbsp; ${T("رقم السجل التجاري","CR No.")}: ________ &nbsp; ${T("شخص التواصل","Contact")}: ________ &nbsp; ${T("التوقيع والختم","Signature & Stamp")}: ________</p></div>`;}
 
-function csv(k){const c=C[k],head=[T("م","#"),...c.f.map(f=>tr(f[1])),T("الإجمالي","Total")];
- const lines=[head,...DB[k].map((x,i)=>[i+1,...c.f.map(f=>shown(f,x[f[0]])),total(k,x)])].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
+function csv(k){const c=C[k],rows=C[view]===c?filtered(k):DB[k],head=[T("م","#"),...c.f.map(f=>tr(f[1])),T("الإجمالي","Total")];
+ const lines=[head,...rows.map((x,i)=>[i+1,...c.f.map(f=>shown(f,x[f[0]])),total(k,x)])].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(","));
  dl("﻿"+lines.join("\r\n"),`${school}-${k}.csv`,"text/csv");}
 function dl(s,n,t){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([s],{type:t}));a.download=n;document.body.appendChild(a);a.click();a.remove();}
-function backup(){dl(JSON.stringify({school,...DB}),`qstss-${school}-backup.json`,"application/json");}
-function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{let d;try{d=JSON.parse(r.result);}catch(e){alert(T("ملف غير صالح","Invalid file"));return;}
- if(d.school&&d.school!==school&&SCHOOLS.some(s=>s.id===d.school)&&!confirm(T(`هذه النسخة تخص ${SN(d.school)}. هل تريد استعادتها في ${SN(school)}؟`,`This backup belongs to ${SN(d.school)}. Restore it into ${SN(school)} anyway?`)))return;
- const n=Object.keys(C).reduce((s,k)=>s+DB[k].length,0);
- if(n&&!confirm(T(`سيتم استبدال ${n} بند محفوظ لهذه المدرسة. متابعة؟`,`This replaces the ${n} items saved for this school. Continue?`)))return;
- for(const k in C)DB[k]=Array.isArray(d[k])?d[k]:[];saveDB();alert(T("تمت الاستعادة","Restored"));go("dash");};r.readAsText(f);}
-function moveLegacy(){let d={};try{d=JSON.parse(ls.get(KEY)||"{}")||{}}catch(e){}
+function backup(){dl(JSON.stringify({school,...DB}),`qstss-${school}-backup-${today()}.json`,"application/json");}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=async()=>{let d;try{d=normData(JSON.parse(r.result));}catch(e){toast(T("ملف غير صالح","Invalid file"),true);return;}
+ if(d.school&&d.school!==school&&SCHOOLS.some(s=>s.id===d.school)&&!confirm(T(`هذه النسخة تخص ${SN(d.school)}. هل تريد إضافتها إلى ${SN(school)}؟`,`This backup belongs to ${SN(d.school)}. Add it to ${SN(school)} anyway?`)))return;
+ const n=Object.keys(C).reduce((s,k)=>s+d[k].length,0);
+ if(!confirm(T(`إضافة ${n} بند من النسخة الاحتياطية؟ البنود الموجودة بنفس الرقم ستُحدَّث.`,`Add ${n} items from the backup? Items with the same ID are updated.`)))return;
+ for(const k in C){if(d[k].length&&!await run(()=>BE.save(k,d[k].map(x=>({...x,id:x.id||newId()})))))return;}
+ toast(T("تمت الاستعادة ✓","Restored ✓"));go("dash");};r.readAsText(f);}
+function localItems(){const out={};let n=0;for(const key of [localKey(school),KEY]){const raw=ls.get(key);if(!raw)continue;let d;try{d=normData(JSON.parse(raw));}catch(e){continue;}for(const k in C){if(!d[k].length)continue;(out[k]=out[k]||[]).push(...d[k]);n+=d[k].length;}}return {out,n};}
+async function uploadLocal(){const {out,n}=localItems();if(!n||!confirm(T(`رفع ${n} بند محفوظ في هذا المتصفح إلى الجدول المشترك لـ ${SN(school)}؟`,`Upload ${n} items saved in this browser to the shared sheet for ${SN(school)}?`)))return;
+ for(const k in out)if(!await run(()=>BE.save(k,out[k])))return;ls.del(localKey(school));ls.del(KEY);toast(T("تم الرفع ✓","Uploaded ✓"));go("dash");}
+async function moveLegacy(){let d={};try{d=normData(JSON.parse(ls.get(KEY)||"{}"))}catch(e){d=normData()}
  if(!confirm(T(`نقل البيانات السابقة إلى ${SN(school)}؟`,`Move the earlier data into ${SN(school)}?`)))return;
- for(const k in C)if(Array.isArray(d[k]))DB[k]=DB[k].concat(d[k]);saveDB();ls.del(KEY);go("dash");}
-function clearAll(){if(confirm(T(`حذف جميع بيانات ${SN(school)} من هذا المتصفح؟`,`Delete ALL data for ${SN(school)} from this browser?`))){ls.del(dbKey());DB=loadDB();go("dash");}}
-function data(){const legacy=ls.get(KEY);
+ for(const k in C)if(d[k].length&&!await run(()=>BE.save(k,d[k])))return;ls.del(KEY);go("dash");}
+function clearAll(){if(confirm(T(`حذف جميع بيانات ${SN(school)} من هذا المتصفح؟`,`Delete ALL data for ${SN(school)} from this browser?`))){ls.del(localKey(school));setData(loadLocal(school));go("dash");}}
+function data(){const li=REMOTE?localItems():{n:0},legacy=!REMOTE&&ls.get(KEY);
  return `<div class="card"><h2>${T("البيانات","Data")} — ${esc(SN(school))}</h2>
- <p>${T("تُحفظ البيانات في هذا المتصفح فقط، ولكل مدرسة بياناتها المنفصلة. نزّل نسخة احتياطية بانتظام.","Data is saved in this browser only, separately for each school. Download a backup regularly.")}</p>
+ <p>${REMOTE?T("تُحفظ البيانات في جدول Google المشترك، ويراها جميع الموظفين. يتم التحديث تلقائيًا كل دقيقة تقريبًا، أو اضغط «تحديث».","Data is saved in the shared Google Sheet and everyone sees it. The site updates about every minute, or press “Refresh”.")+(lastSync?` <span class="muted">${T("آخر تحديث","Last update")}: ${lastSync.toLocaleTimeString()}</span>`:"")
+  :T("الموقع غير متصل بجدول مشترك بعد: تُحفظ البيانات في هذا المتصفح فقط ولا يراها الآخرون.","The site isn't connected to a shared sheet yet: data is saved in this browser only and others can't see it.")}</p>
+ ${li.n?`<div class="note">${T(`يوجد ${li.n} بند محفوظ في هذا المتصفح فقط من النسخة السابقة.`,`${li.n} items from the earlier version are saved only in this browser.`)} <button class="btn sm" onclick="uploadLocal()">${T("رفعها إلى الجدول المشترك","Upload them to the shared sheet")}</button></div>`:""}
  ${legacy?`<div class="note">${T("توجد بيانات أُدخلت قبل إضافة اختيار المدرسة.","There is data entered before school selection was added.")} <button class="btn sm" onclick="moveLegacy()">${T("نقلها إلى هذه المدرسة","Move it into this school")}</button></div>`:""}
- <div class="bar"><button class="btn" onclick="backup()">${T("تنزيل نسخة احتياطية","Download backup")}</button>
- <label class="btn alt">${T("استعادة نسخة","Restore backup")}<input type="file" accept=".json" hidden onchange="imp(this.files[0]);this.value=''"></label></div>
- <div class="bar">${Object.keys(C).map(k=>`<button class="btn sm alt" onclick="csv('${k}')">CSV: ${esc(tr(C[k].title))}</button>`).join("")}</div>
- <button class="btn sm" style="background:#b00" onclick="clearAll()">${T("مسح كل بيانات هذه المدرسة","Clear all data for this school")}</button></div>`;}
+ <h3>Excel</h3><p class="muted">${T("استورد ملف Excel بنفس عناوين الأعمدة (مثل ملف الحصر الأصلي أو القالب). يتم التعرف على كل ورقة وصفحتها تلقائيًا.","Import an Excel file with the same column titles (like the original inventory workbook or the template). Each sheet and its page are recognised automatically.")}</p>
+ <div class="bar"><button class="btn" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn alt" onclick="exportXlsx(true)">${T("تنزيل قالب Excel","Download Excel template")}</button><button class="btn alt" onclick="exportXlsx(false)">${T("تصدير الكل إلى Excel","Export all to Excel")}</button></div>
+ <h3>${T("نسخة احتياطية","Backup")}</h3>
+ <div class="bar"><button class="btn alt" onclick="backup()">${T("تنزيل نسخة احتياطية","Download backup")}</button>
+ <label class="btn alt">${T("استعادة نسخة احتياطية","Restore backup")}<input type="file" accept=".json" hidden onchange="imp(this.files[0]);this.value=''"></label></div>
+ <h3>CSV</h3><div class="bar">${Object.keys(C).map(k=>`<button class="btn sm alt" onclick="csv('${k}')">${esc(tr(C[k].title))}</button>`).join("")}</div>
+ ${!REMOTE?`<button class="btn sm" style="background:#b00" onclick="clearAll()">${T("مسح كل بيانات هذه المدرسة","Clear all data for this school")}</button>`:""}</div>`;}
 function help(){return `<div class="card"><h2>${T("التعليمات","Instructions")}</h2><ol>
  <li>${T("اختر مدرستك أولًا. يمكنك تغييرها من زر «تغيير المدرسة» أعلى الصفحة.","Choose your school first. You can change it with the “Change school” button at the top.")}</li>
- <li>${T("اختر الصفحة المناسبة من الشريط العلوي (الاشتراكات، مصادر التعلم، الكتب، التكنولوجيا، الأقسام، المختبرات، البحث العلمي).","Pick the right page from the top bar (subscriptions, learning resources, textbooks, technology, departments, labs, research).")}</li>
- <li>${T("عبّئ الحقول، والحقول المعلّمة بـ * إلزامية. يُحسب الإجمالي تلقائيًا (الكمية × سعر الوحدة).","Fill in the fields; those marked * are required. The total is calculated automatically (Qty × Unit Price).")}</li>
- <li>${T("اترك الحالة «مسودة» حتى يكتمل الطلب، ثم غيّرها إلى «مرفوع للاعتماد».","Leave the status as “Draft” until the request is complete, then change it to “Submitted”.")}</li>
- <li>${T("البنود بحالة «طلب عروض أسعار» تظهر في صفحة RFQ للطباعة وإرسالها للموردين.","Items with status “RFQ” appear on the RFQ page, ready to print and send to suppliers.")}</li>
- <li>${T("صدّر البيانات إلى Excel (CSV) أو نزّل نسخة احتياطية من صفحة البيانات.","Export to Excel (CSV) or download a backup from the Data page.")}</li>
- <li>${T("زر English / العربية أعلى الصفحة يبدّل لغة الموقع.","The English / العربية button at the top switches the site language.")}</li></ol></div>`;}
-render();
+ <li>${T("اختر الصفحة المناسبة من الشريط العلوي، وعبّئ الحقول (المعلّمة بـ * إلزامية). يُحسب الإجمالي تلقائيًا.","Pick the right page from the top bar and fill in the fields (* = required). The total is calculated automatically.")}</li>
+ <li>${T("بعد «حفظ وإضافة» يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة، فتكتب البند التالي مباشرة.","After “Save & Add”, the lab/department, name, priority, status, item type and unit stay filled, so you can type the next item straight away.")}</li>
+ <li>${T("إذا كان هناك بند مشابه في نفس المختبر/القسم يظهر تنبيه قبل الحفظ. زر «فحص التكرار» يعرض كل البنود المتشابهة لجميع الموظفين؛ احذف المكرر أو اضغط «ليس تكرارًا».","If a similar item exists in the same lab/department you get a warning before saving. “Check duplicates” lists all similar items from all staff; delete the repeat or press “Not a duplicate”.")}</li>
+ <li>${T("استخدم الفلاتر فوق الجدول (المختبر، مقدم الطلب، نوع البند، البحث).","Use the filters above the table (lab, person, item type, search).")}</li>
+ <li>${T("لإضافة بنود كثيرة: «استيراد من Excel» بملف بنفس عناوين الأعمدة، ثم عدّل البنود في الموقع.","To add many items: “Import from Excel” with a file that has the same column titles, then edit the items on the site.")}</li>
+ <li>${T("البنود بحالة «طلب عروض أسعار» تظهر في صفحة RFQ للطباعة.","Items with status “RFQ” appear on the RFQ page, ready to print.")}</li>
+ <li>${T("زر English / العربية أعلى الصفحة يبدّل لغة الموقع.","The English / العربية button at the top switches the language.")}</li></ol></div>`;}
+
+if(school)pickSchool(school);else render();
 </script>
 </body>
 </html>
