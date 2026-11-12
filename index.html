@@ -40,6 +40,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid 
 .dup{background:#fff;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:10px}
 .tag{font-size:12px;padding:3px 8px;border-radius:12px;background:#ffe0b2}.tag.red{background:#ffcdd2}
 .impc{border:1px solid #e4d6dc;border-radius:10px;padding:12px;margin-bottom:12px}
+.money{display:flex;gap:4px}.money input{flex:1;min-width:0}
+.lnk{background:#f7f0f3;border:1px dashed #c9a9b6;border-radius:8px;padding:10px;margin-bottom:6px}.lnk input{flex:1;min-width:220px}
 #toast{position:fixed;bottom:18px;inset-inline-start:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 2px 8px #0003;z-index:20;display:none;max-width:90vw}
 [dir=rtl] #toast{transform:translateX(50%)}
 #toast.err{background:#b00020}
@@ -56,9 +58,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid 
 // Paste the Google Apps Script Web app URL here (ends with /exec). Leave empty to save in each browser only.
 const API_URL = "https://script.google.com/macros/s/AKfycbyEItECDo9tS40Ws6kQc_hNEtJTMr4pIN4GBGD_GEnM3yRIFa1nlYYk_FbKuSVnjTiwCw/exec";
 const YEAR="2027/2028", KEY="qstss_needs", REMOTE=!!API_URL;
+// 1 USD in QAR (the riyal is pegged to the dollar). Prices typed in USD are converted and saved in QAR.
+const USD_RATE=3.64;
 // Schools: "id" keeps each school's data separate — don't change an id after people start entering data.
 const SCHOOLS=[
- {id:"umalsaneem",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – أم السنيم",en:"QSTSS – Um Alsameem"},
+ {id:"umalsaneem",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – أم السنيم",en:"QSTSS – Um Alsaneem"},
  {id:"alsakhama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية - الصخامة",en:"QSTSS – Al Sakhama"},
  {id:"rawdetalhamama",ar:"مدرسة قطر للعلوم والتكنولوجيا الثانوية – روضة الحمامة",en:"QSTSS – Rawdet Alhamama"}
 ];
@@ -189,7 +193,17 @@ function render(){const h=document.documentElement;h.lang=lang;h.dir=lang==="ar"
  if(view!=="pick"&&!DB){a.innerHTML=loadErr?`<div class="card"><h2>${T("تعذّر الاتصال بالجدول المشترك","Could not reach the shared sheet")}</h2><p class="warn">${esc(loadErr)}</p><button class="btn" onclick="refresh()">${T("إعادة المحاولة","Try again")}</button></div>`:`<div class="card">${T("جارٍ تحميل البيانات…","Loading data…")}</div>`;return;}
  a.innerHTML=view==="pick"?pick():view==="dash"?dash():view==="rfq"?rfq():view==="data"?data():view==="help"?help():view==="import"?importView():cat(view);
  const f=document.getElementById("f");
- if(f){f.oninput=()=>{dirty=true;document.getElementById("tot").textContent=fmt(total(view,Object.fromEntries(new FormData(f))));};updTable(view);}}
+ if(f){f.oninput=()=>{dirty=true;updTot(f);};updTable(view);}}
+
+// ===== currency: prices can be typed in USD and are saved in QAR =====
+const PK=k=>k==="subs"?"cost":"price";
+function toQAR(k,r,note){const p=PK(k);
+ if(r._cur==="USD"&&r[p]!==""&&r[p]!=null&&!isNaN(+r[p])){const usd=+r[p];r[p]=String(Math.round(usd*USD_RATE*100)/100);
+  if(note&&C[k].f.some(f=>f[0]==="notes")){const n=`السعر الأصلي / Original price: ${usd} USD`;if(!(r.notes||"").includes(n))r.notes=r.notes?r.notes+" — "+n:n;}}
+ delete r._cur;return r;}
+function updTot(f){const r=Object.fromEntries(new FormData(f)),p=PK(view),raw=r[p],usd=r._cur==="USD";toQAR(view,r);
+ document.getElementById("tot").textContent=fmt(total(view,r));
+ const h=document.getElementById("curhint");if(h)h.textContent=usd&&raw?`${raw} USD = ${fmt(r[p])} (1 USD = ${USD_RATE} ${T("ر.ق","QAR")})`:"";}
 
 function pick(){const cnt=id=>{const d=REMOTE?(()=>{try{return normData(JSON.parse(ls.get("qstss_cache:"+id)||"{}"))}catch(e){return normData()}})():loadLocal(id);return Object.keys(C).reduce((s,k)=>s+d[k].length,0);};
  return `<div class="card"><h2>${T("اختر المدرسة","Choose your school")}</h2>
@@ -203,16 +217,19 @@ function input(f,val){const [k,lab,t,o,req]=f,v=esc(val);let h;
  else if(t==="ta") h=`<textarea name="${k}" rows="2">${v}</textarea>`;
  else if(t==="dl") h=`<input name="${k}" list="dl_${k}" value="${v}" ${req?"required":""}><datalist id="dl_${k}">${L[o].map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`;
  else h=`<input name="${k}" type="${t==="n"?"number":t==="d"?"date":"text"}" ${t==="n"?'min="0" step="any"':""} value="${v}" ${req?"required":""}>`;
+ if(k==="price"||k==="cost")h=`<span class="money">${h}<select name="_cur" aria-label="${T("العملة","Currency")}"><option value="QAR">${T("ر.ق","QAR")}</option><option value="USD">${T("دولار $","USD $")}</option></select></span><small class="muted" id="curhint"></small>`;
  return `<label class="${req?"req":""} ${t==="ta"?"full":""}"><span>${esc(tr(lab))}</span>${h}</label>`;}
 const blank=k=>({status:L.status[0],...(sticky[k]||{}),by:sticky.by||""});
 function cat(k){const c=C[k],ex=editId&&DB[k].find(x=>x.id===editId),r=ex||blank(k);
  return `<div class="card"><h2>${esc(tr(c.title))}</h2>${ex?`<p class="note">${T("أنت تعدّل بندًا موجودًا.","You are editing an existing item.")}</p>`:""}
+ <div class="bar lnk noprint"><input id="lnk" type="url" dir="ltr" placeholder="https://…" aria-label="${T("رابط المنتج","Product link")}" onkeydown="if(event.key==='Enter'){event.preventDefault();fillFromLink()}"><button type="button" class="btn alt" id="lnkb" onclick="fillFromLink()">${T("تعبئة من الرابط","Fill from link")}</button></div>
+ <p class="muted" id="lnkmsg">${T("ألصق رابط المنتج لتعبئة الاسم والمواصفات والسعر تلقائيًا، ثم راجعها وأضف الكمية واختر العملة.","Paste a product link to fill in the name, specifications and price automatically, then check them, add the quantity and choose the currency.")}</p>
  <form id="f" onsubmit="save(event,'${k}')">${c.f.map(f=>input(f,r[f[0]])).join("")}
  <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn" id="sbtn">${ex?T("حفظ التعديل","Save changes"):T("حفظ وإضافة","Save & Add")}</button>${ex?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:`<span class="muted">${T("يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة بعد الحفظ.","Lab/department, name, priority, status, item type and unit stay filled after saving.")}</span>`}</div></form></div>
  <div class="card"><div class="bar filters">${filterBar(k)}</div>
  <div class="bar"><b id="sum"></b><button class="btn sm" id="dupb" onclick="toggleDup('${k}')"></button><button class="btn sm alt" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
  <div id="dup"></div><div class="wrap" id="tw"></div></div>`;}
-async function save(e,k){e.preventDefault();const f=e.target,r=Object.fromEntries(new FormData(f));
+async function save(e,k){e.preventDefault();const f=e.target,r=toQAR(k,Object.fromEntries(new FormData(f)),true);
  const ex=editId&&DB[k].find(x=>x.id===editId);
  const rec=ex?{...ex,...r}:{id:newId(),created:today(),...r};
  if(!ex){const sim=similarTo(k,rec);
@@ -226,6 +243,66 @@ function edit(id){const k=Object.keys(C).find(k=>DB[k].some(x=>x.id===id));if(!k
 async function del(k,id){const x=DB[k].find(x=>x.id===id);if(!x)return;
  if(!confirm(T("حذف هذا البند؟","Delete this item?")+"\n• "+x.item))return;
  if(await run(()=>BE.del(k,[id]),T("تم الحذف","Deleted")))render();}
+
+// ===== fill the form from a product link =====
+// A web page can't read another site directly, so the page is fetched through public relay services (tried in order).
+const PROXIES=[u=>["https://r.jina.ai/"+u,{headers:{"X-Return-Format":"html"}}],u=>["https://corsproxy.io/?url="+encodeURIComponent(u)],u=>["https://api.allorigins.win/raw?url="+encodeURIComponent(u)]];
+async function getPage(u,mk){const c=new AbortController(),h=setTimeout(()=>c.abort(),mk===PROXIES[0]?25000:8000),[url,opt]=mk(u);
+ try{const r=await fetch(url,{...opt,signal:c.signal});if(!r.ok)throw new Error("HTTP "+r.status);return await r.text();}finally{clearTimeout(h);}}
+const CURS={"US$":"USD","$":"USD","USD":"USD","QAR":"QAR","QR":"QAR","ر.ق":"QAR","€":"EUR","EUR":"EUR","£":"GBP","GBP":"GBP","AED":"AED","SAR":"SAR"};
+const curOf=s=>{const m=String(s||"").match(/US\$|\$|USD|QAR|\bQR\b|ر\.ق|€|EUR|£|GBP|AED|SAR/i);return m?CURS[m[0].toUpperCase()]||"":"";};
+const numOf=v=>{const m=String(v??"").replace(/,/g,"").match(/\d+(\.\d+)?/);return m?String(+m[0]):"";};
+const BLOCKED=/just a moment|access denied|robot check|attention required|captcha|are you a human|forbidden|not found|error|verify you|unusual traffic/i;
+function parseProduct(html){const d=new DOMParser().parseFromString(html,"text/html"),o={name:"",spec:"",price:"",cur:"",brand:""};
+ const str=v=>typeof v==="number"?String(v):typeof v==="string"?(/[<&]/.test(v)?new DOMParser().parseFromString(v,"text/html").body.textContent:v).replace(/[ \t]+/g," ").trim():"";
+ const meta=(...ns)=>{for(const n of ns){const e=d.querySelector(`meta[property="${n}"],meta[name="${n}"],meta[itemprop="${n}"]`),v=e&&(e.getAttribute("content")||"").trim();if(v)return v;}return "";};
+ const txt=s=>{const e=d.querySelector(s);return e?e.textContent.replace(/\s+/g," ").trim():"";};
+ const nodes=[],walk=x=>{if(!x||typeof x!=="object")return;if(Array.isArray(x)){x.forEach(walk);return;}nodes.push(x);walk(x["@graph"]);walk(x.mainEntity);};
+ d.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{walk(JSON.parse(s.textContent));}catch(e){}});
+ const p=nodes.find(x=>[].concat(x["@type"]||[]).some(t=>/^(Product|ProductGroup|IndividualProduct|Book|SoftwareApplication)$/i.test(t)));
+ if(p){o.name=str(p.name);o.spec=str(p.description);o.brand=str(p.brand&&(p.brand.name||p.brand));
+  const props=[].concat(p.additionalProperty||[]).filter(a=>a&&a.name&&a.value!=null).map(a=>`${str(a.name)}: ${str(a.value)}`);
+  if(props.length)o.spec=[o.spec,props.join("\n")].filter(Boolean).join("\n");
+  let of=[].concat(p.offers||(([].concat(p.hasVariant||[])[0]||{}).offers)||[])[0];
+  if(of){if(of.price==null&&of.lowPrice==null&&of.offers)of=[].concat(of.offers)[0]||of;
+   const ps=[].concat(of.priceSpecification||[])[0]||{};
+   o.price=numOf(of.price??of.lowPrice??ps.price);o.cur=str(of.priceCurrency||ps.priceCurrency);}}
+ o.name=o.name||meta("og:title","twitter:title")||txt("#productTitle")||txt("h1")||str(d.title);
+ if(!o.spec){const li=[...d.querySelectorAll("#feature-bullets li")].map(e=>e.textContent.replace(/\s+/g," ").trim()).filter(Boolean);
+  o.spec=li.length?li.map(x=>"• "+x).join("\n"):meta("og:description","description","twitter:description");}
+ if(!o.price){o.price=numOf(meta("product:price:amount","og:price:amount","price"));o.cur=o.cur||meta("product:price:currency","og:price:currency","priceCurrency");}
+ if(!o.price){const e=[...d.querySelectorAll('.a-price .a-offscreen,[itemprop="price"],[data-price],.price,[class*="price" i]')].find(e=>/\d/.test(e.textContent)&&e.textContent.trim().length<40);
+  if(e){o.price=numOf(e.textContent);o.cur=o.cur||curOf(e.textContent);}}
+ o.brand=o.brand||meta("product:brand","og:brand");
+ o.cur=CURS[String(o.cur).toUpperCase()]||String(o.cur).toUpperCase().slice(0,3);
+ o.spec=o.spec.slice(0,800);o.name=o.name.slice(0,200);
+ if(BLOCKED.test(o.name)&&!o.price)o.name="";
+ return o;}
+async function fillFromLink(){const inp=document.getElementById("lnk"),b=document.getElementById("lnkb"),msg=document.getElementById("lnkmsg"),k=view,u=inp.value.trim();
+ if(!/^https?:\/\/[^\s.]+\.\S+$/i.test(u)){toast(T("ألصق رابطًا صحيحًا يبدأ بـ https://","Paste a valid link starting with https://"),true);return;}
+ dirty=true;b.disabled=true;const old=b.textContent;b.textContent=T("جارٍ قراءة الرابط…","Reading the link…");let best=null;
+ for(const mk of PROXIES){try{const o=parseProduct(await getPage(u,mk));if(o.name&&(!best||(o.price&&!best.price)))best=o;if(best&&best.price)break;}catch(e){}}
+ const f=document.getElementById("f");if(view!==k||!f||!document.body.contains(b))return;
+ b.disabled=false;b.textContent=old;
+ const has=n=>C[k].f.find(x=>x[0]===n),set=(n,v)=>{if(v&&f.elements[n]){f.elements[n].value=v;return true;}return false;};
+ // keep the link itself: URL field, else ISBN/URL (learning resources), else notes
+ if(has("url"))set("url",u);else if(k==="lrc")set("spec",u);else if(has("notes")&&!f.elements.notes.value.includes(u))set("notes",(f.elements.notes.value?f.elements.notes.value+"\n":"")+u);
+ if(!best){msg.className="warn";msg.textContent=T("تعذّرت قراءة هذا الرابط (بعض المواقع تمنع القراءة الآلية). تم حفظ الرابط فقط؛ أدخل بقية البيانات يدويًا.","This link could not be read (some sites block automatic reading). Only the link was kept; please enter the other details yourself.");return;}
+ const got=[],miss=[];
+ (set("item",best.name)?got:miss).push(T("الاسم","name"));
+ const sf=has("spec")&&has("spec")[2]==="ta"?"spec":has("desc")?"desc":null;
+ if(sf)(set(sf,best.spec)?got:miss).push(T("المواصفات","specifications"));
+ if(has("brand"))set("brand",best.brand);
+ let cw="";
+ if(set(PK(k),best.price)){got.push(T("السعر","price"));f.elements._cur.value=best.cur==="USD"?"USD":"QAR";
+  cw=best.cur==="USD"?T(" السعر بالدولار وسيُحوَّل إلى الريال."," The price is in USD and will be converted to QAR.")
+   :best.cur==="QAR"?"":best.cur?T(` تنبيه: السعر في الموقع بعملة ${best.cur} — حوّله إلى الريال أو الدولار.`,` Warning: the site's price is in ${best.cur} — convert it to QAR or USD.`)
+   :T(" تحقق من عملة السعر."," Check the price currency.");}
+ else miss.push(T("السعر","price"));
+ updTot(f);
+ msg.className=miss.length||(best.cur&&best.cur!=="USD"&&best.cur!=="QAR")?"warn":"muted";
+ msg.textContent=T("تمت قراءة: ","Filled in: ")+got.join(T("، ",", "))+"."+(miss.length?T(" لم يُعثر على: "," Not found: ")+miss.join(T("، ",", "))+".":"")+cw+T(" راجع البيانات وأضف الكمية والخيار المطلوب."," Check the details and add the quantity and the option you need.");
+ if(f.elements.qty)f.elements.qty.focus();}
 
 // ===== filters (lab/department, person, item type, search) =====
 const F=k=>flt[k]||(flt[k]={g:"",by:"",type:"",q:""});
@@ -424,6 +501,8 @@ function data(){const li=REMOTE?localItems():{n:0},legacy=!REMOTE&&ls.get(KEY);
 function help(){return `<div class="card"><h2>${T("التعليمات","Instructions")}</h2><ol>
  <li>${T("اختر مدرستك أولًا. يمكنك تغييرها من زر «تغيير المدرسة» أعلى الصفحة.","Choose your school first. You can change it with the “Change school” button at the top.")}</li>
  <li>${T("اختر الصفحة المناسبة من الشريط العلوي، وعبّئ الحقول (المعلّمة بـ * إلزامية). يُحسب الإجمالي تلقائيًا.","Pick the right page from the top bar and fill in the fields (* = required). The total is calculated automatically.")}</li>
+ <li>${T("للتعبئة السريعة: ألصق رابط المنتج في خانة «تعبئة من الرابط» أعلى النموذج، فيُملأ الاسم والمواصفات والسعر تلقائيًا إن أمكن. راجع البيانات دائمًا وأضف الكمية والخيار المطلوب. بعض المواقع تمنع القراءة الآلية.","Quick fill: paste a product link in “Fill from link” above the form and the name, specifications and price are filled in when possible. Always check them and add the quantity and the option you need. Some sites block automatic reading.")}</li>
+ <li>${T(`يمكن إدخال السعر بالدولار: اختر «دولار $» بجانب خانة السعر، فيُحوَّل تلقائيًا إلى الريال (1 دولار = ${USD_RATE} ر.ق) ويُحفظ بالريال.`,`Prices can be entered in USD: choose “USD $” next to the price box and it is converted to QAR automatically (1 USD = ${USD_RATE} QAR) and saved in QAR.`)}</li>
  <li>${T("بعد «حفظ وإضافة» يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة، فتكتب البند التالي مباشرة.","After “Save & Add”, the lab/department, name, priority, status, item type and unit stay filled, so you can type the next item straight away.")}</li>
  <li>${T("إذا كان هناك بند مشابه في نفس المختبر/القسم يظهر تنبيه قبل الحفظ. زر «فحص التكرار» يعرض كل البنود المتشابهة لجميع الموظفين؛ احذف المكرر أو اضغط «ليس تكرارًا».","If a similar item exists in the same lab/department you get a warning before saving. “Check duplicates” lists all similar items from all staff; delete the repeat or press “Not a duplicate”.")}</li>
  <li>${T("استخدم الفلاتر فوق الجدول (المختبر، مقدم الطلب، نوع البند، البحث).","Use the filters above the table (lab, person, item type, search).")}</li>
