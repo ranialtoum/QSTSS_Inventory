@@ -120,6 +120,8 @@ const fmt=n=>(+n||0).toLocaleString("en-US")+" "+T("ر.ق","QAR");
 const total=(k,r)=>k==="subs"?(+r.cost||0):(+r.qty||0)*(+r.price||0);
 const hasPrice=(k,r)=>k==="subs"?+r.cost>0:+r.price>0;
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+// table cell text: links are shown short (site name only) and open in a new tab; the full link is kept in the data and exports
+const cell=v=>esc(v).replace(/https?:\/\/[^\s<]+/g,u=>`<a href="${u}" target="_blank" rel="noopener" title="${u}" dir="ltr" style="white-space:nowrap">🔗 ${u.replace(/^https?:\/\/(www\.)?/,"").split(/[\/?#]/)[0].slice(0,30)}</a>`);
 const jsq=s=>String(s??"").replace(/[^\w|.-]/g,"");
 const days=d=>d?Math.ceil((new Date(d)-new Date())/864e5):"";
 const shown=(f,v)=>f[2]==="s"?tr(v):(v??"");
@@ -324,7 +326,7 @@ function updTable(k){const c=C[k],rows=filtered(k),pairs=dupPairs(k);
  const b=document.getElementById("dupb");b.textContent=`${T("فحص التكرار","Check duplicates")} (${pairs.length})`;b.classList.toggle("alt",!pairs.length);
  document.getElementById("dup").innerHTML=dupOpen===k?dupHTML(k,pairs):"";
  document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
- ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${esc(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
+ ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
  </tbody></table>`;}
 
 // ===== duplicate check =====
@@ -346,7 +348,7 @@ function dupHTML(k,pairs){if(!pairs.length)return `<p class="note">${T("لا ت�
  <p class="muted">${T("كل البنود من جميع الموظفين في نفس المختبر/القسم. احذف المكرر، أو اضغط «ليس تكرارًا» إذا كانا مختلفين (مثل مقاسين أو نوعين من الخشب أو الكابلات).","All staff's items in the same lab/department. Delete the repeat, or press “Not a duplicate” when they differ (e.g. two sizes or types of wood or cable).")}</p>
  ${pairs.map(p=>`<div class="dup"><div class="bar"><span class="tag ${p.same?"red":""}">${p.same?T("مطابق","Same item"):T("متشابه","Similar")+" "+Math.round(p.s*100)+"%"}</span>${g&&p.a[g]?`<b>${esc(tr(p.a[g]))}</b>`:""}<button class="btn sm alt" onclick="ignoreDup('${k}','${jsq(pairKey(p.a,p.b))}')">${T("ليس تكرارًا – احتفظ بالاثنين","Not a duplicate – keep both")}</button></div>
  <div class="wrap"><table><thead><tr><th>${T("الصنف","Item")}</th><th>${T("المواصفات","Specifications")}</th><th>${T("الكمية","Qty")}</th><th>${T("سعر الوحدة","Unit price")}</th><th>${T("مقدم الطلب","Requested by")}</th><th>${T("التاريخ","Added")}</th><th></th></tr></thead><tbody>
- ${[p.a,p.b].map(x=>`<tr><td>${esc(x.item)}</td><td>${esc(x.spec)}</td><td>${esc(x.qty??x.users??"")} ${esc(tr(x.unit||""))}</td><td>${esc(x.price??x.cost??"")}</td><td>${esc(x.by)}</td><td>${esc(x.created)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")}</tbody></table></div></div>`).join("")}</div>`;}
+ ${[p.a,p.b].map(x=>`<tr><td>${esc(x.item)}</td><td>${cell(x.spec)}</td><td>${esc(x.qty??x.users??"")} ${esc(tr(x.unit||""))}</td><td>${esc(x.price??x.cost??"")}</td><td>${esc(x.by)}</td><td>${esc(x.created)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")}</tbody></table></div></div>`).join("")}</div>`;}
 
 // ===== Excel import / export =====
 async function loadXLSX(){if(window.XLSX)return;await new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=res;s.onerror=()=>rej(new Error(T("تعذّر تحميل قارئ Excel. تحقق من الاتصال بالإنترنت.","Could not load the Excel reader. Check the internet connection.")));document.head.appendChild(s);});}
