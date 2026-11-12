@@ -40,6 +40,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid 
 .dup{background:#fff;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:10px}
 .tag{font-size:12px;padding:3px 8px;border-radius:12px;background:#ffe0b2}.tag.red{background:#ffcdd2}
 .impc{border:1px solid #e4d6dc;border-radius:10px;padding:12px;margin-bottom:12px}
+th{z-index:2}
+#t{border-collapse:separate;border-spacing:0;border:solid #e2e2e2;border-width:1px 0 0;border-inline-start-width:1px}#t th,#t td{border-width:0 0 1px;border-inline-end-width:1px}
+#t .fz{position:sticky;z-index:1}#t td.fz{background:#fff}#t th.fz{z-index:3}
+#t .fzl{border-inline-end:2px solid #c9a9b6}
 select.st{padding:3px 4px;font-size:12px;min-width:110px}
 .money{display:flex;gap:4px}.money input{flex:1;min-width:0}
 .lnk{background:#f7f0f3;border:1px dashed #c9a9b6;border-radius:8px;padding:10px;margin-bottom:6px}.lnk input{flex:1;min-width:220px}
@@ -334,7 +338,14 @@ function updTable(k){const c=C[k],rows=filtered(k),pairs=dupPairs(k);
  document.getElementById("dup").innerHTML=dupOpen===k?dupHTML(k,pairs):"";
  document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
  ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${f[0]==="status"?statusSel(k,x):cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
- </tbody></table>`;}
+ </tbody></table>`;freeze();}
+// keep the first 3 columns in place while the table is scrolled sideways (fewer on narrow screens)
+function freeze(){const t=document.getElementById("t"),w=document.getElementById("tw");if(!t||!w||!t.rows.length)return;
+ t.querySelectorAll(".fz").forEach(c=>{c.classList.remove("fz","fzl");c.style.insetInlineStart="";});
+ const offs=[];let off=0,n=Math.max(3,C[view]?C[view].f.findIndex(f=>f[0]==="item")+2:3); // always up to the item-name column
+ for(const h of [...t.rows[0].cells].slice(0,n)){if(offs.length&&off+h.offsetWidth>w.clientWidth*.6)break;offs.push(off);off+=h.offsetWidth;}
+ for(const r of t.rows)offs.forEach((o,i)=>{const c=r.cells[i];if(!c||c.colSpan>1)return;c.classList.add("fz");if(i===offs.length-1)c.classList.add("fzl");c.style.insetInlineStart=o+"px";});}
+addEventListener("resize",()=>{clearTimeout(freeze.h);freeze.h=setTimeout(freeze,150);});
 
 // ===== duplicate check =====
 function bigr(s){s=s.replace(/ /g,"");const m=new Map();for(let i=0;i<s.length-1;i++){const b=s.slice(i,i+2);m.set(b,(m.get(b)||0)+1);}return m;}
