@@ -40,6 +40,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid 
 .dup{background:#fff;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:10px}
 .tag{font-size:12px;padding:3px 8px;border-radius:12px;background:#ffe0b2}.tag.red{background:#ffcdd2}
 .impc{border:1px solid #e4d6dc;border-radius:10px;padding:12px;margin-bottom:12px}
+select.st{padding:3px 4px;font-size:12px;min-width:110px}
 .money{display:flex;gap:4px}.money input{flex:1;min-width:0}
 .lnk{background:#f7f0f3;border:1px dashed #c9a9b6;border-radius:8px;padding:10px;margin-bottom:6px}.lnk input{flex:1;min-width:220px}
 #toast{position:fixed;bottom:18px;inset-inline-start:50%;transform:translateX(-50%);background:#2e7d32;color:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 2px 8px #0003;z-index:20;display:none;max-width:90vw}
@@ -226,14 +227,14 @@ function cat(k){const c=C[k],ex=editId&&DB[k].find(x=>x.id===editId),r=ex||blank
  return `<div class="card"><h2>${esc(tr(c.title))}</h2>${ex?`<p class="note">${T("أنت تعدّل بندًا موجودًا.","You are editing an existing item.")}</p>`:""}
  <div class="bar lnk noprint"><input id="lnk" type="url" dir="ltr" placeholder="https://…" aria-label="${T("رابط المنتج","Product link")}" onkeydown="if(event.key==='Enter'){event.preventDefault();fillFromLink()}"><button type="button" class="btn alt" id="lnkb" onclick="fillFromLink()">${T("تعبئة من الرابط","Fill from link")}</button></div>
  <p class="muted" id="lnkmsg">${T("ألصق رابط المنتج لتعبئة الاسم والمواصفات والسعر تلقائيًا، ثم راجعها وأضف الكمية واختر العملة.","Paste a product link to fill in the name, specifications and price automatically, then check them, add the quantity and choose the currency.")}</p>
- <form id="f" onsubmit="save(event,'${k}')">${c.f.map(f=>input(f,r[f[0]])).join("")}
- <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn" id="sbtn">${ex?T("حفظ التعديل","Save changes"):T("حفظ وإضافة","Save & Add")}</button>${ex?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:`<span class="muted">${T("يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة بعد الحفظ.","Lab/department, name, priority, status, item type and unit stay filled after saving.")}</span>`}</div></form></div>
+ <form id="f" onsubmit="save(event,'${k}')">${c.f.filter(f=>f[0]!=="status").map(f=>input(f,r[f[0]])).join("")}
+ <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn" id="sbtn">${ex?T("حفظ التعديل","Save changes"):T("حفظ وإضافة","Save & Add")}</button>${ex?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:`<span class="muted">${T("يبقى المختبر/القسم ومقدم الطلب والأولوية ونوع البند والوحدة بعد الحفظ. تُحفظ البنود الجديدة بحالة «مسودة»، وتُغيَّر الحالة من القائمة في الجدول.","Lab/department, name, priority, item type and unit stay filled after saving. New items are saved as Draft; change the status from the list in the table.")}</span>`}</div></form></div>
  <div class="card"><div class="bar filters">${filterBar(k)}</div>
  <div class="bar"><b id="sum"></b><button class="btn sm" id="dupb" onclick="toggleDup('${k}')"></button><button class="btn sm alt" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
  <div id="dup"></div><div class="wrap" id="tw"></div></div>`;}
 async function save(e,k){e.preventDefault();const f=e.target,r=toQAR(k,Object.fromEntries(new FormData(f)),true);
  const ex=editId&&DB[k].find(x=>x.id===editId);
- const rec=ex?{...ex,...r}:{id:newId(),created:today(),...r};
+ const rec=ex?{...ex,...r}:{id:newId(),created:today(),status:L.status[0],...r};
  if(!ex){const sim=similarTo(k,rec);
   if(sim.length&&!confirm(T("يوجد بند مشابه في نفس المختبر/القسم:","A similar item already exists in the same lab/department:")+"\n"+sim.map(x=>`• ${x.item}${x.spec?" – "+String(x.spec).slice(0,60):""} (${x.by||"-"}, ${T("الكمية","qty")} ${x.qty||x.users||"-"})`).join("\n")+"\n\n"+T("إضافة على أي حال؟","Add it anyway?")))return;}
  const b=document.getElementById("sbtn");if(b)b.disabled=true;
@@ -241,6 +242,12 @@ async function save(e,k){e.preventDefault();const f=e.target,r=toQAR(k,Object.fr
  const ok=await run(()=>BE.save(k,[rec]),ex?T("تم حفظ التعديل ✓","Changes saved ✓"):T("تم الحفظ ✓ — أضف البند التالي","Saved ✓ — add the next item"));
  if(ok){editId=null;render();const it=document.querySelector('#f [name=item]');if(it&&!ex)it.focus();}
  else if(b)b.disabled=false;}
+// status is changed from the table row, not typed with each new item (new items start as Draft)
+function statusSel(k,x){const v=x.status||"";
+ return `<select class="st" aria-label="${T("الحالة","Status")}" onchange="setStatus('${k}','${jsq(x.id)}',this.value)">${v&&L.status.includes(v)?"":`<option value="${esc(v)}" selected>${esc(tr(v))}</option>`}${L.status.map(o=>`<option value="${esc(o)}" ${o===v?"selected":""}>${esc(tr(o))}</option>`).join("")}</select>`;}
+async function setStatus(k,id,v){const x=DB[k].find(x=>x.id===id);if(!x||x.status===v)return;
+ await run(()=>BE.save(k,[{...x,status:v}]),T("تم تحديث الحالة ✓","Status updated ✓"));
+ if(view===k&&document.getElementById("tw"))updTable(k);}
 function edit(id){const k=Object.keys(C).find(k=>DB[k].some(x=>x.id===id));if(!k)return;view=k;editId=id;render();scrollTo(0,0);}
 async function del(k,id){const x=DB[k].find(x=>x.id===id);if(!x)return;
  if(!confirm(T("حذف هذا البند؟","Delete this item?")+"\n• "+x.item))return;
@@ -326,7 +333,7 @@ function updTable(k){const c=C[k],rows=filtered(k),pairs=dupPairs(k);
  const b=document.getElementById("dupb");b.textContent=`${T("فحص التكرار","Check duplicates")} (${pairs.length})`;b.classList.toggle("alt",!pairs.length);
  document.getElementById("dup").innerHTML=dupOpen===k?dupHTML(k,pairs):"";
  document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
- ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
+ ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${f[0]==="status"?statusSel(k,x):cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
  </tbody></table>`;}
 
 // ===== duplicate check =====
@@ -505,7 +512,8 @@ function help(){return `<div class="card"><h2>${T("التعليمات","Instruct
  <li>${T("اختر الصفحة المناسبة من الشريط العلوي، وعبّئ الحقول (المعلّمة بـ * إلزامية). يُحسب الإجمالي تلقائيًا.","Pick the right page from the top bar and fill in the fields (* = required). The total is calculated automatically.")}</li>
  <li>${T("للتعبئة السريعة: ألصق رابط المنتج في خانة «تعبئة من الرابط» أعلى النموذج، فيُملأ الاسم والمواصفات والسعر تلقائيًا إن أمكن. راجع البيانات دائمًا وأضف الكمية والخيار المطلوب. بعض المواقع تمنع القراءة الآلية.","Quick fill: paste a product link in “Fill from link” above the form and the name, specifications and price are filled in when possible. Always check them and add the quantity and the option you need. Some sites block automatic reading.")}</li>
  <li>${T(`يمكن إدخال السعر بالدولار: اختر «دولار $» بجانب خانة السعر، فيُحوَّل تلقائيًا إلى الريال (1 دولار = ${USD_RATE} ر.ق) ويُحفظ بالريال.`,`Prices can be entered in USD: choose “USD $” next to the price box and it is converted to QAR automatically (1 USD = ${USD_RATE} QAR) and saved in QAR.`)}</li>
- <li>${T("بعد «حفظ وإضافة» يبقى المختبر/القسم ومقدم الطلب والأولوية والحالة ونوع البند والوحدة، فتكتب البند التالي مباشرة.","After “Save & Add”, the lab/department, name, priority, status, item type and unit stay filled, so you can type the next item straight away.")}</li>
+ <li>${T("بعد «حفظ وإضافة» يبقى المختبر/القسم ومقدم الطلب والأولوية ونوع البند والوحدة، فتكتب البند التالي مباشرة.","After “Save & Add”, the lab/department, name, priority, item type and unit stay filled, so you can type the next item straight away.")}</li>
+ <li>${T("تُحفظ البنود الجديدة بحالة «مسودة». لتغيير حالة أي بند اختر الحالة من القائمة المنسدلة في عمود «الحالة» بالجدول، وتُحفظ فورًا.","New items are saved as Draft. To change an item's status, pick it from the dropdown in the table's Status column; it is saved immediately.")}</li>
  <li>${T("إذا كان هناك بند مشابه في نفس المختبر/القسم يظهر تنبيه قبل الحفظ. زر «فحص التكرار» يعرض كل البنود المتشابهة لجميع الموظفين؛ احذف المكرر أو اضغط «ليس تكرارًا».","If a similar item exists in the same lab/department you get a warning before saving. “Check duplicates” lists all similar items from all staff; delete the repeat or press “Not a duplicate”.")}</li>
  <li>${T("استخدم الفلاتر فوق الجدول (المختبر، مقدم الطلب، نوع البند، البحث).","Use the filters above the table (lab, person, item type, search).")}</li>
  <li>${T("لإضافة بنود كثيرة: «استيراد من Excel» بملف بنفس عناوين الأعمدة، ثم عدّل البنود في الموقع.","To add many items: “Import from Excel” with a file that has the same column titles, then edit the items on the site.")}</li>
