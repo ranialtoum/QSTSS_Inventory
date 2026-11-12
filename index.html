@@ -40,6 +40,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid 
 .dup{background:#fff;border:1px solid #eee;border-radius:8px;padding:10px;margin-bottom:10px}
 .tag{font-size:12px;padding:3px 8px;border-radius:12px;background:#ffe0b2}.tag.red{background:#ffcdd2}
 .impc{border:1px solid #e4d6dc;border-radius:10px;padding:12px;margin-bottom:12px}
+[hidden]{display:none!important}
 th{z-index:2}
 #t{border-collapse:separate;border-spacing:0;border:solid #e2e2e2;border-width:1px 0 0;border-inline-start-width:1px}#t th,#t td{border-width:0 0 1px;border-inline-end-width:1px}
 #t .fz{position:sticky;z-index:1}#t td.fz{background:#fff}#t th.fz{z-index:3}
@@ -181,7 +182,7 @@ function pickSchool(id){school=id;ls.set("qstss_school",id);editId=null;rfqSrc="
  if(REMOTE){try{const c=ls.get("qstss_cache:"+id);if(c)setData(JSON.parse(c));}catch(e){}}else setData(loadLocal(id));
  render();scrollTo(0,0);if(REMOTE)refresh();}
 function changeSchool(){view="pick";editId=null;IMP=null;render();}
-function go(v){view=school?v:"pick";editId=null;dupOpen=null;render();scrollTo(0,0);}
+function go(v){view=school?v:"pick";editId=null;dupOpen=null;SEL.clear();render();scrollTo(0,0);}
 
 function header(){const inSchool=school&&view!=="pick";
  const st=!REMOTE?`<span class="chip bad" title="${T("البيانات لا تُشارك مع الآخرين","Data is not shared with others")}">${T("محفوظ في هذا المتصفح فقط","Saved in this browser only")}</span>`
@@ -234,7 +235,7 @@ function cat(k){const c=C[k],ex=editId&&DB[k].find(x=>x.id===editId),r=ex||blank
  <form id="f" onsubmit="save(event,'${k}')">${c.f.filter(f=>f[0]!=="status").map(f=>input(f,r[f[0]])).join("")}
  <div class="full bar"><span>${T("الإجمالي","Total")}: <b id="tot">${fmt(total(k,r))}</b></span><button class="btn" id="sbtn">${ex?T("حفظ التعديل","Save changes"):T("حفظ وإضافة","Save & Add")}</button>${ex?`<button type="button" class="btn alt" onclick="go('${k}')">${T("إلغاء","Cancel")}</button>`:`<span class="muted">${T("يبقى المختبر/القسم ومقدم الطلب والأولوية ونوع البند والوحدة بعد الحفظ. تُحفظ البنود الجديدة بحالة «مسودة»، وتُغيَّر الحالة من القائمة في الجدول.","Lab/department, name, priority, item type and unit stay filled after saving. New items are saved as Draft; change the status from the list in the table.")}</span>`}</div></form></div>
  <div class="card"><div class="bar filters">${filterBar(k)}</div>
- <div class="bar"><b id="sum"></b><button class="btn sm" id="dupb" onclick="toggleDup('${k}')"></button><button class="btn sm alt" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button></div>
+ <div class="bar"><b id="sum"></b><button class="btn sm" id="dupb" onclick="toggleDup('${k}')"></button><button class="btn sm alt" onclick="pickExcel()">${T("استيراد من Excel","Import from Excel")}</button><button class="btn sm alt" onclick="csv('${k}')">${T("تصدير CSV","Export CSV")}</button><button class="btn sm" id="delsel" style="background:#b00020" onclick="delSel('${k}')" hidden></button></div>
  <div id="dup"></div><div class="wrap" id="tw"></div></div>`;}
 async function save(e,k){e.preventDefault();const f=e.target,r=toQAR(k,Object.fromEntries(new FormData(f)),true);
  const ex=editId&&DB[k].find(x=>x.id===editId);
@@ -336,9 +337,20 @@ function updTable(k){const c=C[k],rows=filtered(k),pairs=dupPairs(k);
  document.getElementById("sum").textContent=`${rows.length}${rows.length!==DB[k].length?" / "+DB[k].length:""} ${T("بند","items")} — ${fmt(rows.reduce((s,x)=>s+total(k,x),0))}`;
  const b=document.getElementById("dupb");b.textContent=`${T("فحص التكرار","Check duplicates")} (${pairs.length})`;b.classList.toggle("alt",!pairs.length);
  document.getElementById("dup").innerHTML=dupOpen===k?dupHTML(k,pairs):"";
- document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th>${T("م","#")}</th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
- ${rows.map((x,i)=>`<tr><td>${i+1}</td>${c.f.map(f=>`<td>${f[0]==="status"?statusSel(k,x):cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
- </tbody></table>`;freeze();}
+ const vis=new Set(rows.map(x=>x.id));SEL.forEach(i=>vis.has(i)||SEL.delete(i));
+ document.getElementById("tw").innerHTML=`<table id="t"><thead><tr><th><label class="chk"><input type="checkbox" id="selall" title="${T("تحديد الكل","Select all")}" aria-label="${T("تحديد الكل","Select all")}" onchange="selAll('${k}',this.checked)">${T("م","#")}</label></th>${c.f.map(f=>`<th>${esc(tr(f[1]))}</th>`).join("")}${k==="subs"?`<th>${T("الأيام المتبقية","Days Left")}</th>`:""}<th>${T("الإجمالي","Total")}</th><th></th></tr></thead><tbody>
+ ${rows.map((x,i)=>`<tr><td><label class="chk"><input type="checkbox" class="sel" aria-label="${T("تحديد البند","Select item")}" ${SEL.has(x.id)?"checked":""} onchange="selT('${jsq(x.id)}',this.checked)">${i+1}</label></td>${c.f.map(f=>`<td>${f[0]==="status"?statusSel(k,x):cell(shown(f,x[f[0]]))}</td>`).join("")}${k==="subs"?`<td>${days(x.end)}</td>`:""}<td>${fmt(total(k,x))}</td><td style="white-space:nowrap"><button class="btn sm" onclick="edit('${jsq(x.id)}')">${T("تعديل","Edit")}</button> <button class="btn sm alt" onclick="del('${k}','${jsq(x.id)}')">${T("حذف","Delete")}</button></td></tr>`).join("")||`<tr><td colspan="${c.f.length+4}" class="muted">${T("لا توجد بنود","No items")}</td></tr>`}
+ </tbody></table>`;updSel();freeze();}
+// ===== pick several items and delete them together =====
+let SEL=new Set();
+function selT(id,on){on?SEL.add(id):SEL.delete(id);updSel();}
+function selAll(k,on){SEL=new Set(on?filtered(k).map(x=>x.id):[]);document.querySelectorAll("#t input.sel").forEach(c=>c.checked=on);updSel();}
+function updSel(){const b=document.getElementById("delsel"),a=document.getElementById("selall"),n=document.querySelectorAll("#t input.sel").length;
+ if(b){b.hidden=!SEL.size;b.textContent=`${T("حذف المحدد","Delete selected")} (${SEL.size})`;}
+ if(a)a.checked=n>0&&SEL.size===n;}
+async function delSel(k){const xs=DB[k].filter(x=>SEL.has(x.id));if(!xs.length)return;
+ if(!confirm(T(`حذف ${xs.length} بند نهائيًا؟ لا يمكن التراجع.`,`Permanently delete ${xs.length} items? This cannot be undone.`)+"\n"+xs.slice(0,10).map(x=>"• "+x.item).join("\n")+(xs.length>10?"\n… +"+(xs.length-10):"")))return;
+ if(await run(()=>BE.del(k,xs.map(x=>x.id)),T(`تم حذف ${xs.length} بند`,`Deleted ${xs.length} items`))){SEL.clear();render();}}
 // keep the first 3 columns in place while the table is scrolled sideways (fewer on narrow screens)
 function freeze(){const t=document.getElementById("t"),w=document.getElementById("tw");if(!t||!w||!t.rows.length)return;
  t.querySelectorAll(".fz").forEach(c=>{c.classList.remove("fz","fzl");c.style.insetInlineStart="";});
@@ -526,6 +538,7 @@ function help(){return `<div class="card"><h2>${T("التعليمات","Instruct
  <li>${T("بعد «حفظ وإضافة» يبقى المختبر/القسم ومقدم الطلب والأولوية ونوع البند والوحدة، فتكتب البند التالي مباشرة.","After “Save & Add”, the lab/department, name, priority, item type and unit stay filled, so you can type the next item straight away.")}</li>
  <li>${T("تُحفظ البنود الجديدة بحالة «مسودة». لتغيير حالة أي بند اختر الحالة من القائمة المنسدلة في عمود «الحالة» بالجدول، وتُحفظ فورًا.","New items are saved as Draft. To change an item's status, pick it from the dropdown in the table's Status column; it is saved immediately.")}</li>
  <li>${T("إذا كان هناك بند مشابه في نفس المختبر/القسم يظهر تنبيه قبل الحفظ. زر «فحص التكرار» يعرض كل البنود المتشابهة لجميع الموظفين؛ احذف المكرر أو اضغط «ليس تكرارًا».","If a similar item exists in the same lab/department you get a warning before saving. “Check duplicates” lists all similar items from all staff; delete the repeat or press “Not a duplicate”.")}</li>
+ <li>${T("لحذف عدة بنود معًا: ضع علامة في المربع بجانب رقم كل بند (أو المربع في رأس الجدول لتحديد الكل الظاهر)، ثم اضغط «حذف المحدد».","To delete several items together: tick the box next to each item's number (or the box in the table header to select all shown), then press “Delete selected”.")}</li>
  <li>${T("استخدم الفلاتر فوق الجدول (المختبر، مقدم الطلب، نوع البند، البحث).","Use the filters above the table (lab, person, item type, search).")}</li>
  <li>${T("لإضافة بنود كثيرة: «استيراد من Excel» بملف بنفس عناوين الأعمدة، ثم عدّل البنود في الموقع.","To add many items: “Import from Excel” with a file that has the same column titles, then edit the items on the site.")}</li>
  <li>${T("البنود بحالة «طلب عروض أسعار» تظهر في صفحة RFQ للطباعة.","Items with status “RFQ” appear on the RFQ page, ready to print.")}</li>
