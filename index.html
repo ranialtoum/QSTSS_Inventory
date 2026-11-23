@@ -52,6 +52,10 @@ select.st{padding:3px 4px;font-size:12px;min-width:110px}
 [dir=rtl] #toast{transform:translateX(50%)}
 #toast.err{background:#b00020}
 @media print{nav,header,.noprint,#toast{display:none}body{background:#fff}.card{box-shadow:none}}
+.dlg{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.dlgb{background:#fff;border-radius:12px;padding:20px;max-width:480px;width:100%;box-shadow:0 8px 30px #0004}
+.dlgb p{white-space:pre-line;margin:0 0 16px;max-height:60vh;overflow:auto;line-height:1.6}
+.dlgb .bar{margin:0;justify-content:flex-end}.btn.red{background:#b00020}
 </style>
 </head>
 <body>
@@ -139,6 +143,16 @@ let idn=0;const newId=()=>Date.now().toString(36)+(idn++).toString(36)+Math.rand
 const nrm=s=>String(s??"").toLowerCase().replace(/[ً-ْـ]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[^\p{L}\p{N}]+/gu," ").trim();
 const grpKey=k=>k==="labs"?"lab":C[k].f.some(f=>f[0]==="dept")?"dept":null;
 function toast(m,err){const t=document.getElementById("toast");t.textContent=m;t.className=err?"err":"";t.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display="none",err?7000:2500);}
+// In-page confirmation box (some browsers block pop-ups). Resolves true for Yes, false for Cancel/Esc/outside click.
+function ask(msg){return new Promise(res=>{const prev=document.activeElement,danger=/^(حذف|رفض|Delete|Reject|Permanently)/.test(msg);
+ const d=document.createElement("div");d.className="dlg";
+ d.innerHTML=`<div class="dlgb" role="alertdialog" aria-modal="true"><p></p><div class="bar"><button type="button" class="btn ${danger?"red":""}" data-v="1">${danger?T("نعم، احذف","Yes, delete"):T("نعم","Yes")}</button><button type="button" class="btn alt" data-v="0">${T("إلغاء","Cancel")}</button></div></div>`;
+ d.querySelector("p").textContent=msg;
+ const done=v=>{document.removeEventListener("keydown",key,true);d.remove();if(prev&&prev.focus)prev.focus();res(v);};
+ const key=e=>{if(e.key==="Escape"){e.preventDefault();done(false);}};
+ d.addEventListener("click",e=>{const b=e.target.closest("button[data-v]");if(b)done(b.dataset.v==="1");else if(e.target===d)done(false);});
+ document.addEventListener("keydown",key,true);document.body.appendChild(d);
+ d.querySelector(danger?'button[data-v="0"]':'button[data-v="1"]').focus();});}
 
 // ===== data: shared Google Sheet (REMOTE) or this browser =====
 const localKey=id=>KEY+":"+id;
@@ -308,7 +322,7 @@ function usersView(){if(!isAdmin())return `<div class="card">${T("هذه الص�
 async function saveUser(e){e.preventDefault();const f=Object.fromEntries(new FormData(e.target)),b=document.getElementById("ubtn");b.disabled=true;
  try{USERS=(await api({action:"user_save",user:f})).users;toast(editUser?T("تم حفظ التعديل ✓","Changes saved ✓"):T("تمت إضافة المستخدم ✓","User added ✓"));editUser=null;render();}
  catch(err){b.disabled=false;toast(err.message,true);}}
-async function delUser(u,reject){if(!confirm(reject?T(`رفض طلب ${u} وحذفه؟`,`Reject and remove the request from ${u}?`):T(`حذف المستخدم ${u}؟ لن يتمكن من الدخول. (البنود التي أدخلها تبقى.)`,`Delete user ${u}? They will no longer be able to sign in. (Items they entered stay.)`)))return;
+async function delUser(u,reject){if(!await ask(reject?T(`رفض طلب ${u} وحذفه؟`,`Reject and remove the request from ${u}?`):T(`حذف المستخدم ${u}؟ لن يتمكن من الدخول. (البنود التي أدخلها تبقى.)`,`Delete user ${u}? They will no longer be able to sign in. (Items they entered stay.)`)))return;
  try{USERS=(await api({action:"user_delete",username:u})).users;toast(reject?T("تم رفض الطلب","Request rejected"):T("تم الحذف","Deleted"));render();}catch(err){toast(err.message,true);}}
 async function approveUser(un){const u=USERS.find(x=>x.username===un);if(!u)return;
  try{USERS=(await api({action:"user_save",user:{username:u.username,name:u.name,role:"staff",active:"yes"}})).users;toast(T(`تمت الموافقة على ${u.name} ✓`,`${u.name} approved ✓`));render();}catch(err){toast(err.message,true);}}
@@ -336,7 +350,7 @@ async function save(e,k){e.preventDefault();const f=e.target,r=toQAR(k,Object.fr
  const ex=editId&&DB[k].find(x=>x.id===editId);
  const rec=ex?{...ex,...r}:{id:newId(),created:today(),status:L.status[0],...r};
  if(!ex){const sim=similarTo(k,rec);
-  if(sim.length&&!confirm(T("يوجد بند مشابه في نفس المختبر/القسم:","A similar item already exists in the same lab/department:")+"\n"+sim.map(x=>`• ${x.item}${x.spec?" – "+String(x.spec).slice(0,60):""} (${x.by||"-"}, ${T("الكمية","qty")} ${x.qty||x.users||"-"})`).join("\n")+"\n\n"+T("إضافة على أي حال؟","Add it anyway?")))return;}
+  if(sim.length&&!await ask(T("يوجد بند مشابه في نفس المختبر/القسم:","A similar item already exists in the same lab/department:")+"\n"+sim.map(x=>`• ${x.item}${x.spec?" – "+String(x.spec).slice(0,60):""} (${x.by||"-"}, ${T("الكمية","qty")} ${x.qty||x.users||"-"})`).join("\n")+"\n\n"+T("إضافة على أي حال؟","Add it anyway?")))return;}
  const b=document.getElementById("sbtn");if(b)b.disabled=true;
  if(!ex){sticky[k]={};STICKY.forEach(s=>{if(r[s])sticky[k][s]=r[s];});if(r.by)sticky.by=r.by;ls.set("qstss_sticky",JSON.stringify(sticky));}
  const ok=await run(()=>BE.save(k,[rec]),ex?T("تم حفظ التعديل ✓","Changes saved ✓"):T("تم الحفظ ✓ — أضف البند التالي","Saved ✓ — add the next item"));
@@ -350,7 +364,7 @@ async function setStatus(k,id,v){const x=DB[k].find(x=>x.id===id);if(!x||x.statu
  if(view===k&&document.getElementById("tw"))updTable(k);}
 function edit(id){const k=Object.keys(C).find(k=>DB[k].some(x=>x.id===id));if(!k)return;view=k;editId=id;render();scrollTo(0,0);}
 async function del(k,id){const x=DB[k].find(x=>x.id===id);if(!x)return;
- if(!confirm(T("حذف هذا البند؟","Delete this item?")+"\n• "+x.item))return;
+ if(!await ask(T("حذف هذا البند؟","Delete this item?")+"\n• "+x.item))return;
  if(await run(()=>BE.del(k,[id]),T("تم الحذف","Deleted")))render();}
 
 // ===== fill the form from a product link =====
@@ -448,7 +462,7 @@ async function setStatusSel(k,v){const xs=DB[k].filter(x=>SEL.has(x.id));if(!v||
  if(await run(()=>BE.save(k,xs.map(x=>({...x,status:v}))),T(`تم تحديث حالة ${xs.length} بند ✓`,`Status updated for ${xs.length} items ✓`)))SEL.clear();
  if(view===k&&document.getElementById("tw"))updTable(k);}
 async function delSel(k){const xs=DB[k].filter(x=>SEL.has(x.id));if(!xs.length)return;
- if(!confirm(T(`حذف ${xs.length} بند نهائيًا؟ لا يمكن التراجع.`,`Permanently delete ${xs.length} items? This cannot be undone.`)+"\n"+xs.slice(0,10).map(x=>"• "+x.item).join("\n")+(xs.length>10?"\n… +"+(xs.length-10):"")))return;
+ if(!await ask(T(`حذف ${xs.length} بند نهائيًا؟ لا يمكن التراجع.`,`Permanently delete ${xs.length} items? This cannot be undone.`)+"\n"+xs.slice(0,10).map(x=>"• "+x.item).join("\n")+(xs.length>10?"\n… +"+(xs.length-10):"")))return;
  if(await run(()=>BE.del(k,xs.map(x=>x.id)),T(`تم حذف ${xs.length} بند`,`Deleted ${xs.length} items`))){SEL.clear();render();}}
 // keep the first 3 columns in place while the table is scrolled sideways (fewer on narrow screens)
 function freeze(){const t=document.getElementById("t"),w=document.getElementById("tw");if(!t||!w||!t.rows.length)return;
@@ -604,18 +618,18 @@ function csv(k){const c=C[k],rows=C[view]===c?filtered(k):DB[k],head=[T("م","#"
 function dl(s,n,t){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([s],{type:t}));a.download=n;document.body.appendChild(a);a.click();a.remove();}
 function backup(){dl(JSON.stringify({school,...DB}),`qstss-${school}-backup-${today()}.json`,"application/json");}
 function imp(f){if(!f)return;const r=new FileReader();r.onload=async()=>{let d;try{d=normData(JSON.parse(r.result));}catch(e){toast(T("ملف غير صالح","Invalid file"),true);return;}
- if(d.school&&d.school!==school&&SCHOOLS.some(s=>s.id===d.school)&&!confirm(T(`هذه النسخة تخص ${SN(d.school)}. هل تريد إضافتها إلى ${SN(school)}؟`,`This backup belongs to ${SN(d.school)}. Add it to ${SN(school)} anyway?`)))return;
+ if(d.school&&d.school!==school&&SCHOOLS.some(s=>s.id===d.school)&&!await ask(T(`هذه النسخة تخص ${SN(d.school)}. هل تريد إضافتها إلى ${SN(school)}؟`,`This backup belongs to ${SN(d.school)}. Add it to ${SN(school)} anyway?`)))return;
  const n=Object.keys(C).reduce((s,k)=>s+d[k].length,0);
- if(!confirm(T(`إضافة ${n} بند من النسخة الاحتياطية؟ البنود الموجودة بنفس الرقم ستُحدَّث.`,`Add ${n} items from the backup? Items with the same ID are updated.`)))return;
+ if(!await ask(T(`إضافة ${n} بند من النسخة الاحتياطية؟ البنود الموجودة بنفس الرقم ستُحدَّث.`,`Add ${n} items from the backup? Items with the same ID are updated.`)))return;
  for(const k in C){if(d[k].length&&!await run(()=>BE.save(k,d[k].map(x=>({...x,id:x.id||newId()})))))return;}
  toast(T("تمت الاستعادة ✓","Restored ✓"));go("dash");};r.readAsText(f);}
 function localItems(){const out={};let n=0;for(const key of [localKey(school),KEY]){const raw=ls.get(key);if(!raw)continue;let d;try{d=normData(JSON.parse(raw));}catch(e){continue;}for(const k in C){if(!d[k].length)continue;(out[k]=out[k]||[]).push(...d[k]);n+=d[k].length;}}return {out,n};}
-async function uploadLocal(){const {out,n}=localItems();if(!n||!confirm(T(`رفع ${n} بند محفوظ في هذا المتصفح إلى الجدول المشترك لـ ${SN(school)}؟`,`Upload ${n} items saved in this browser to the shared sheet for ${SN(school)}?`)))return;
+async function uploadLocal(){const {out,n}=localItems();if(!n||!await ask(T(`رفع ${n} بند محفوظ في هذا المتصفح إلى الجدول المشترك لـ ${SN(school)}؟`,`Upload ${n} items saved in this browser to the shared sheet for ${SN(school)}?`)))return;
  for(const k in out)if(!await run(()=>BE.save(k,out[k])))return;ls.del(localKey(school));ls.del(KEY);toast(T("تم الرفع ✓","Uploaded ✓"));go("dash");}
 async function moveLegacy(){let d={};try{d=normData(JSON.parse(ls.get(KEY)||"{}"))}catch(e){d=normData()}
- if(!confirm(T(`نقل البيانات السابقة إلى ${SN(school)}؟`,`Move the earlier data into ${SN(school)}?`)))return;
+ if(!await ask(T(`نقل البيانات السابقة إلى ${SN(school)}؟`,`Move the earlier data into ${SN(school)}?`)))return;
  for(const k in C)if(d[k].length&&!await run(()=>BE.save(k,d[k])))return;ls.del(KEY);go("dash");}
-function clearAll(){if(confirm(T(`حذف جميع بيانات ${SN(school)} من هذا المتصفح؟`,`Delete ALL data for ${SN(school)} from this browser?`))){ls.del(localKey(school));setData(loadLocal(school));go("dash");}}
+async function clearAll(){if(await ask(T(`حذف جميع بيانات ${SN(school)} من هذا المتصفح؟`,`Delete ALL data for ${SN(school)} from this browser?`))){ls.del(localKey(school));setData(loadLocal(school));go("dash");}}
 function data(){const li=REMOTE?localItems():{n:0},legacy=!REMOTE&&ls.get(KEY);
  return `<div class="card"><h2>${T("البيانات","Data")} — ${esc(SN(school))}</h2>
  <p>${REMOTE?T("تُحفظ البيانات في جدول Google المشترك، ويراها جميع الموظفين. يتم التحديث تلقائيًا كل دقيقة تقريبًا، أو اضغط «تحديث».","Data is saved in the shared Google Sheet and everyone sees it. The site updates about every minute, or press “Refresh”.")+(lastSync?` <span class="muted">${T("آخر تحديث","Last update")}: ${lastSync.toLocaleTimeString()}</span>`:"")
